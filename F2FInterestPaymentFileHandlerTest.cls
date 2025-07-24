@@ -359,18 +359,16 @@ private class F2FInterestPaymentFileHandlerTest {
     @isTest
     static void testLoanWithoutInvestmentOrders() {
         String sysDate = String.valueOf(currentDate);
-        
         // Create a loan without Investment Orders
         List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Interest Test Borrower' LIMIT 1];
         loan__Loan_Account__c loanWithoutIO = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
         loanWithoutIO.loan__Interest_Posted__c = 500;
         loanWithoutIO.loan__Invalid_Data__c = false;
         loanWithoutIO.loan__Loan_Status__c = 'Active - Good Standing';
+        loanWithoutIO.Name = 'LoanWithoutIO_' + System.currentTimeMillis(); // Ensure unique name
         insert loanWithoutIO;
-        
-        String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference\n'
-                           + loanWithoutIO.Name + ', ,100.00, ,'+sysDate+',paid, \n';
-        
+        String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference\\n'
+                           + loanWithoutIO.Name + ', ,100.00, ,' + sysDate + ',paid, \\n';
         F2FInterestPaymentFileHandler handler = new F2FInterestPaymentFileHandler();
         List<Profile> systemAdminProfileList = [SELECT Id 
                                                 FROM Profile 
@@ -385,7 +383,6 @@ private class F2FInterestPaymentFileHandlerTest {
             handler.processInterestFile(fileContent);
             Test.stopTest();
         }
-
         // Should have error for missing Investment Orders
         System.assert(handler.errorList.size() > 0, 'Should have validation error for missing Investment Orders');
         Boolean hasIOError = false;
@@ -576,41 +573,40 @@ private class F2FInterestPaymentFileHandlerTest {
     @isTest
     static void testProcessLoanPaymentTransactions() {
         String sysDate = String.valueOf(currentDate);
-        List<loan__Loan_Account__c> loanQueryObj = [SELECT Id,
-                                                            Name 
-                                                    FROM loan__Loan_Account__c
-                                                    WHERE loan__Invalid_Data__c = false 
-                                                    AND loan__Loan_Status__c = 'Active - Good Standing' 
-                                                    LIMIT 1];
-        
+        List<loan__Loan_Account__c> loanQueryObj = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = false AND loan__Loan_Status__c = 'Active - Good Standing' LIMIT 1];
+        if (loanQueryObj.isEmpty()) {
+            // Create a new valid loan if none exists
+            List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Interest Test Borrower' LIMIT 1];
+            loan__Loan_Account__c validLoan = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
+            validLoan.loan__Invalid_Data__c = false;
+            validLoan.loan__Loan_Status__c = 'Active - Good Standing';
+            validLoan.Name = 'ValidLoan_' + System.currentTimeMillis();
+            insert validLoan;
+            loanQueryObj.add(validLoan);
+        }
         F2FInterestPaymentFileHandler handler = new F2FInterestPaymentFileHandler();
-        
         // Create test context
         List<loan__Loan_Payment_Transaction__c> updateList = new List<loan__Loan_Payment_Transaction__c>();
-        F2FInterestPaymentFileHandler.ProcessLoanPaymentContext context = 
-            new F2FInterestPaymentFileHandler.ProcessLoanPaymentContext(300, updateList, loanQueryObj[0]);
-        
+        F2FInterestPaymentFileHandler.ProcessLoanPaymentContext context = new F2FInterestPaymentFileHandler.ProcessLoanPaymentContext(300, updateList, loanQueryObj[0]);
         // Get LPTs for the loan
-        List<loan__Loan_Payment_Transaction__c> lptList = [SELECT Id, Name, loan__Transaction_Amount__c 
-                                                           FROM loan__Loan_Payment_Transaction__c 
-                                                           WHERE loan__Loan_Account__c = :loanQueryObj[0].Id 
-                                                           AND loan__Cleared__c = false
-                                                           LIMIT 2];
-        
-        List<Profile> systemAdminProfileList = [SELECT Id 
-                                                FROM Profile 
-                                                WHERE Name = 'System Administrator'];
+        List<loan__Loan_Payment_Transaction__c> lptList = [SELECT Id, Name, loan__Transaction_Amount__c FROM loan__Loan_Payment_Transaction__c WHERE loan__Loan_Account__c = :loanQueryObj[0].Id AND loan__Cleared__c = false LIMIT 2];
+        if (lptList.isEmpty()) {
+            // Create a new LPT if none exists
+            loan__Loan_Payment_Transaction__c lpt = F2FTestHelper.returnLoanPayment(loanQueryObj[0]);
+            lpt.loan__Cleared__c = false;
+            lpt.Name = 'LPT_' + System.currentTimeMillis();
+            insert lpt;
+            lptList.add(lpt);
+        }
+        List<Profile> systemAdminProfileList = [SELECT Id FROM Profile WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k13@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
-        List<User> adminUserList = [SELECT Id
-                                    FROM User
-                                    WHERE Email = 'testUser112k13@test.com'];
+        List<User> adminUserList = [SELECT Id FROM User WHERE Email = 'testUser112k13@test.com'];
         System.runAs(adminUserList[0]){
             Test.startTest();
             handler.processLoanPaymentTransactions(lptList, context);
             Test.stopTest();
         }
-        
         // Verify that LPTs were processed
         System.assert(context.updateloanPaymentList.size() > 0, 'Should have updated some LPTs');
     }
