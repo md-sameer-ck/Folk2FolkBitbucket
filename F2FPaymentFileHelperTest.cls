@@ -2,9 +2,9 @@
  * @description                : Test class for F2FPaymentFileHelper
  * @author                     : Md Sameer
  * @group                      : Test Class
- * @last modified on           : 17-07-2025
+ * @last modified on           : 24-07-2025
  * @last modified by           : Md Sameer
- * @last modification details  :  
+ * @last modification details  :
  * Modifications Log
  * Ver   Date         Author                Modification
  * 1.0   17-07-2025   Md Sameer            Initial Version
@@ -13,7 +13,7 @@
 private class F2FPaymentFileHelperTest {
 
     static Date currentDate = System.today();
-    
+
     @testsetup
     static void testsetup(){
         //account record types
@@ -29,14 +29,14 @@ private class F2FPaymentFileHelperTest {
 
         Account borrowerAccountObj=F2FTestHelper.getAccount();
         borrowerAccountObj.Name = 'Helper Test Borrower';
-        borrowerAccountObj.clcommon__Email__c = 'helper.borrower@mailinator.com';        
+        borrowerAccountObj.clcommon__Email__c = 'helper.borrower@mailinator.com';
         borrowerAccountObj.recordTypeId = borrowerRecordTypeObj;
         borrowerAccountObj.clcommon__Legal_Entity_Type__c = individualLegalEntity.Id;
         accountList.add(borrowerAccountObj);
 
         Account investorAccountObj=F2FTestHelper.getAccount();
         investorAccountObj.Name = 'Helper Test Investor';
-        investorAccountObj.clcommon__Email__c = 'helper.investor@mailinator.com';        
+        investorAccountObj.clcommon__Email__c = 'helper.investor@mailinator.com';
         investorAccountObj.recordTypeId = investorRecordTypeObj;
         investorAccountObj.clcommon__Legal_Entity_Type__c = individualLegalEntity.Id;
         investorAccountObj.loan__Investor__c = true;
@@ -49,7 +49,7 @@ private class F2FPaymentFileHelperTest {
 
         // Create contracts with different scenarios
         List<loan__Loan_Account__c> contractList = new List<loan__Loan_Account__c>();
-        
+
         // Single valid contract for testing - will be modified in individual test methods as needed
         loan__Loan_Account__c contractObj=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
         contractObj.loan__Interest_Rate__c = 6.5;
@@ -64,7 +64,7 @@ private class F2FPaymentFileHelperTest {
 
         // Create Investment Orders (Investor Loans) for validation
         List<loan__Investor_Loan__c> investorLoanList = new List<loan__Investor_Loan__c>();
-        
+
         // Valid investor loan with matching interest posted
         loan__Investor_Loan__c investorLoan = F2FTestHelper.returnloanInvestor(contractObj);
         investorLoanList.add(investorLoan);
@@ -82,7 +82,7 @@ private class F2FPaymentFileHelperTest {
         Database.insert(paymentModeList);
 
         List<loan__Loan_Payment_Transaction__c> lptList = new List<loan__Loan_Payment_Transaction__c>();
-        
+
         // LPT with reversal issue - cleared=true, reversed=true, paid_to_investor=true, but paid_to_investor_reversed=false
         loan__Loan_Payment_Transaction__c lptReversalIssue = F2FTestHelper.returnLoanPayment(contractObj);
         lptReversalIssue.loan__Payment_Mode__c = paymentModeList[0].Id;
@@ -109,13 +109,13 @@ private class F2FPaymentFileHelperTest {
     static void testConstructorWithValidInterestHandler() {
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put('LAI101', 100.0);
-        
+
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
-        
+
         Test.startTest();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
         Test.stopTest();
-        
+
         System.assertNotEquals(null, helper, 'Helper should be instantiated');
         System.assertNotEquals(null, helper.handlerUtilInst, 'Handler util should be instantiated');
     }
@@ -124,13 +124,13 @@ private class F2FPaymentFileHelperTest {
     static void testConstructorWithValidFeesHandler() {
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put('LAI101', 100.0);
-        
+
         F2FFeesPaymentFileHandler feesHandler = new F2FFeesPaymentFileHandler();
-        
+
         Test.startTest();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(feesHandler, loanAmountMap);
         Test.stopTest();
-        
+
         System.assertNotEquals(null, helper, 'Helper should be instantiated');
         System.assertNotEquals(null, helper.handlerUtilInst, 'Handler util should be instantiated');
     }
@@ -139,7 +139,7 @@ private class F2FPaymentFileHelperTest {
     static void testConstructorWithNullHandler() {
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put('LAI101', 100.0);
-        
+
         Test.startTest();
         try {
             F2FPaymentFileHelper helper = new F2FPaymentFileHelper(null, loanAmountMap);
@@ -153,7 +153,7 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testConstructorWithNullLoanMap() {
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
-        
+
         Test.startTest();
         try {
             F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, null);
@@ -168,9 +168,9 @@ private class F2FPaymentFileHelperTest {
     static void testConstructorWithInvalidHandler() {
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put('LAI101', 100.0);
-        
+
         String invalidHandler = 'Invalid Handler';
-        
+
         Test.startTest();
         try {
             F2FPaymentFileHelper helper = new F2FPaymentFileHelper(invalidHandler, loanAmountMap);
@@ -188,16 +188,16 @@ private class F2FPaymentFileHelperTest {
         for(loan__Loan_Account__c loan : loans) {
             loanNameSet.add(loan.Name);
         }
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put('LAI101', 100.0);
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         Map<String, loan__Loan_Account__c> result = helper.getLoanDetails(loanNameSet);
         Test.stopTest();
-        
+
         System.assert(result.size() > 0, 'Should return loan details');
         for(String loanName : loanNameSet) {
             if(result.containsKey(loanName)) {
@@ -211,21 +211,21 @@ private class F2FPaymentFileHelperTest {
         List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = false LIMIT 1];
         Set<String> loanNameSet = new Set<String>();
         Map<String, loan__Loan_Account__c> loanNameVsLoanObjMap = new Map<String, loan__Loan_Account__c>();
-        
+
         for(loan__Loan_Account__c loan : loans) {
             loanNameSet.add(loan.Name);
             loanNameVsLoanObjMap.put(loan.Name, loan);
         }
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put('LAI101', 100.0);
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         Map<String, Decimal> result = helper.getIOPostingSum(loanNameSet, loanNameVsLoanObjMap);
         Test.stopTest();
-        
+
         System.assertNotEquals(null, result, 'Result should not be null');
         // Should have posting sums for loans with Investment Orders
         for(String loanName : loanNameSet) {
@@ -242,16 +242,16 @@ private class F2FPaymentFileHelperTest {
         for(loan__Loan_Account__c loan : loans) {
             loanNameSet.add(loan.Name);
         }
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put('LAI101', 100.0);
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         Set<String> result = helper.getReversalIssueLoanMap(loanNameSet);
         Test.stopTest();
-        
+
         System.assertNotEquals(null, result, 'Result should not be null');
         // Should identify loans with reversal issues
         System.assert(result.size() > 0, 'Should find loans with reversal issues');
@@ -260,17 +260,17 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testInterestFileValidationWithValidLoans() {
         List<loan__Loan_Account__c> validLoans = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = false AND loan__Loan_Status__c = 'Active - Good Standing' LIMIT 1];
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put(validLoans[0].Name, 100.0); // Small amount that won't exceed interest posted
-        
+
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         helper.interestFileValidation();
         Test.stopTest();
-        
+
         // Should have some validation errors due to reversal issues, but loan should remain in map for basic validations
         System.assert(interestHandler.errorList.size() > 0, 'Should have validation errors due to test data setup');
     }
@@ -281,21 +281,21 @@ private class F2FPaymentFileHelperTest {
         List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 1];
         loans[0].loan__Invalid_Data__c = true;
         update loans[0];
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put(loans[0].Name, 100.0);
-        
+
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         helper.interestFileValidation();
         Test.stopTest();
-        
+
         // Should have validation error and loan should be removed from map
         System.assert(interestHandler.errorList.size() > 0, 'Should have validation errors');
         System.assert(!helper.loanNameVsAmountMap.containsKey(loans[0].Name), 'Invalid loan should be removed from map');
-        
+
         // Reset loan for other tests
         loans[0].loan__Invalid_Data__c = false;
         update loans[0];
@@ -307,21 +307,21 @@ private class F2FPaymentFileHelperTest {
         List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 1];
         loans[0].loan__Loan_Status__c = 'Closed - Obligations met';
         update loans[0];
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put(loans[0].Name, 100.0);
-        
+
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         helper.interestFileValidation();
         Test.stopTest();
-        
+
         // Should have validation error and loan should be removed from map
         System.assert(interestHandler.errorList.size() > 0, 'Should have validation errors');
         System.assert(!helper.loanNameVsAmountMap.containsKey(loans[0].Name), 'Invalid status loan should be removed from map');
-        
+
         // Reset loan for other tests
         loans[0].loan__Loan_Status__c = 'Active - Good Standing';
         update loans[0];
@@ -333,17 +333,17 @@ private class F2FPaymentFileHelperTest {
         List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 1];
         loans[0].loan__Interest_Posted__c = 100; // Set low amount for clearing validation
         update loans[0];
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put(loans[0].Name, 150.0); // Amount exceeds interest posted (100)
-        
+
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         helper.interestFileValidation();
         Test.stopTest();
-        
+
         // Should have validation error for excessive clearing amount
         System.assert(interestHandler.errorList.size() > 0, 'Should have validation errors');
         Boolean hasExcessiveAmountError = false;
@@ -354,7 +354,7 @@ private class F2FPaymentFileHelperTest {
             }
         }
         System.assert(hasExcessiveAmountError, 'Should have specific error for excessive clearing amount');
-        
+
         // Reset loan for other tests
         loans[0].loan__Interest_Posted__c = 1000;
         update loans[0];
@@ -363,17 +363,17 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testFeesFileValidationWithValidLoans() {
         List<loan__Loan_Account__c> validLoans = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = false AND loan__Loan_Status__c = 'Active - Good Standing' LIMIT 1];
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put(validLoans[0].Name, 100.0);
-        
+
         F2FFeesPaymentFileHandler feesHandler = new F2FFeesPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(feesHandler, loanAmountMap);
-        
+
         Test.startTest();
         helper.feesFileValidation();
         Test.stopTest();
-        
+
         // Should pass basic validations for fees (no Investment Order validation for fees)
         System.assert(helper.loanNameVsAmountMap.containsKey(validLoans[0].Name), 'Valid loan should remain in map');
     }
@@ -384,21 +384,21 @@ private class F2FPaymentFileHelperTest {
         List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 1];
         loans[0].loan__Invalid_Data__c = true;
         update loans[0];
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put(loans[0].Name, 100.0);
-        
+
         F2FFeesPaymentFileHandler feesHandler = new F2FFeesPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(feesHandler, loanAmountMap);
-        
+
         Test.startTest();
         helper.feesFileValidation();
         Test.stopTest();
-        
+
         // Should have validation error and loan should be removed from map
         System.assert(feesHandler.errorList.size() > 0, 'Should have validation errors');
         System.assert(!helper.loanNameVsAmountMap.containsKey(loans[0].Name), 'Invalid loan should be removed from map');
-        
+
         // Reset loan for other tests
         loans[0].loan__Invalid_Data__c = false;
         update loans[0];
@@ -407,15 +407,15 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testIsLoanNameValidWithValidLoan() {
         List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 1];
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         Boolean result = helper.isLoanNameValid(loans[0].Name, loans[0]);
         Test.stopTest();
-        
+
         System.assertEquals(true, result, 'Should return true for valid loan');
         System.assertEquals(0, interestHandler.errorCount, 'Should not have errors for valid loan');
     }
@@ -425,11 +425,11 @@ private class F2FPaymentFileHelperTest {
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         Boolean result = helper.isLoanNameValid('NonExistentLoan', null);
         Test.stopTest();
-        
+
         System.assertEquals(false, result, 'Should return false for null loan');
         System.assertEquals(1, interestHandler.errorCount, 'Should have one error for null loan');
     }
@@ -437,15 +437,15 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testIsLoanNotInvalidDataWithValidLoan() {
         List<loan__Loan_Account__c> validLoans = [SELECT Id, Name, loan__Invalid_Data__c FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = false LIMIT 1];
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         Boolean result = helper.isLoanNotInvalidData(validLoans[0]);
         Test.stopTest();
-        
+
         System.assertEquals(true, result, 'Should return true for loan without invalid data flag');
         System.assertEquals(0, interestHandler.errorCount, 'Should not have errors for valid loan');
     }
@@ -453,20 +453,15 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testIsLoanNotInvalidDataWithInvalidLoan() {
         List<loan__Loan_Account__c> invalidLoans = [SELECT Id, Name, loan__Invalid_Data__c FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = true LIMIT 1];
-        if (invalidLoans.isEmpty()) {
-            // Create a new invalid loan if none exists
-            List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Helper Test Borrower' LIMIT 1];
-            loan__Loan_Account__c invalidLoan = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
-            invalidLoan.loan__Invalid_Data__c = true;
-            insert invalidLoan;
-            invalidLoans.add(invalidLoan);
-        }
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
         Test.startTest();
         Boolean result = helper.isLoanNotInvalidData(invalidLoans[0]);
         Test.stopTest();
+
         System.assertEquals(false, result, 'Should return false for loan with invalid data flag');
         System.assertEquals(1, interestHandler.errorCount, 'Should have one error for invalid loan');
     }
@@ -474,15 +469,15 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testIsLoanStatusValidWithValidStatus() {
         List<loan__Loan_Account__c> validLoans = [SELECT Id, Name, loan__Loan_Status__c FROM loan__Loan_Account__c WHERE loan__Loan_Status__c = 'Active - Good Standing' LIMIT 1];
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         Boolean result = helper.isLoanStatusValid(validLoans[0]);
         Test.stopTest();
-        
+
         System.assertEquals(true, result, 'Should return true for valid loan status');
         System.assertEquals(0, interestHandler.errorCount, 'Should not have errors for valid status');
     }
@@ -490,20 +485,15 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testIsLoanStatusValidWithInvalidStatus() {
         List<loan__Loan_Account__c> invalidLoans = [SELECT Id, Name, loan__Loan_Status__c FROM loan__Loan_Account__c WHERE loan__Loan_Status__c = 'Closed - Obligations met' LIMIT 1];
-        if (invalidLoans.isEmpty()) {
-            // Create a new loan with invalid status if none exists
-            List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Helper Test Borrower' LIMIT 1];
-            loan__Loan_Account__c invalidLoan = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
-            invalidLoan.loan__Loan_Status__c = 'Closed - Obligations met';
-            insert invalidLoan;
-            invalidLoans.add(invalidLoan);
-        }
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
         Test.startTest();
         Boolean result = helper.isLoanStatusValid(invalidLoans[0]);
         Test.stopTest();
+
         System.assertEquals(false, result, 'Should return false for invalid loan status');
         System.assertEquals(1, interestHandler.errorCount, 'Should have one error for invalid status');
     }
@@ -511,16 +501,16 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testIsClearingAmountValidWithValidAmount() {
         List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c WHERE loan__Interest_Posted__c > 0 LIMIT 1];
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put(loans[0].Name, 50.0); // Amount less than interest posted
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         Boolean result = helper.isClearingAmountValid(loans[0]);
         Test.stopTest();
-        
+
         System.assertEquals(true, result, 'Should return true for valid clearing amount');
         System.assertEquals(0, interestHandler.errorCount, 'Should not have errors for valid amount');
     }
@@ -530,19 +520,19 @@ private class F2FPaymentFileHelperTest {
         List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c LIMIT 1];
         loans[0].loan__Interest_Posted__c = 100; // Set low amount for this test
         update loans[0];
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put(loans[0].Name, 150.0); // Amount exceeds interest posted
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         Boolean result = helper.isClearingAmountValid(loans[0]);
         Test.stopTest();
-        
+
         System.assertEquals(false, result, 'Should return false for excessive clearing amount');
         System.assertEquals(1, interestHandler.errorCount, 'Should have one error for excessive amount');
-        
+
         // Reset loan for other tests
         loans[0].loan__Interest_Posted__c = 1000;
         update loans[0];
@@ -551,18 +541,18 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testIsPostingDiffValidWithValidDifference() {
         List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = false AND loan__Interest_Posted__c = 1000 LIMIT 1];
-        
+
         Map<String, Decimal> loanNameVsIOPostingMap = new Map<String, Decimal>();
         loanNameVsIOPostingMap.put(loans[0].Name, 1000.0); // Exact match
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         Boolean result = helper.isPostingDiffValid(loans[0], loanNameVsIOPostingMap);
         Test.stopTest();
-        
+
         System.assertEquals(true, result, 'Should return true for valid posting difference');
         System.assertEquals(0, interestHandler.errorCount, 'Should not have errors for valid difference');
     }
@@ -572,21 +562,21 @@ private class F2FPaymentFileHelperTest {
         List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c LIMIT 1];
         loans[0].loan__Interest_Posted__c = 100; // Set amount for this test
         update loans[0];
-        
+
         Map<String, Decimal> loanNameVsIOPostingMap = new Map<String, Decimal>();
         loanNameVsIOPostingMap.put(loans[0].Name, 95.0); // 5 difference, should fail (>1)
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         Boolean result = helper.isPostingDiffValid(loans[0], loanNameVsIOPostingMap);
         Test.stopTest();
-        
+
         System.assertEquals(false, result, 'Should return false for excessive posting difference');
         System.assertEquals(1, interestHandler.errorCount, 'Should have one error for excessive difference');
-        
+
         // Reset loan for other tests
         loans[0].loan__Interest_Posted__c = 1000;
         update loans[0];
@@ -601,18 +591,18 @@ private class F2FPaymentFileHelperTest {
         loanWithoutIO.loan__Invalid_Data__c = false;
         loanWithoutIO.loan__Loan_Status__c = 'Active - Good Standing';
         insert loanWithoutIO;
-        
+
         Map<String, Decimal> loanNameVsIOPostingMap = new Map<String, Decimal>();
         // No entry for this loan in the map
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         Boolean result = helper.isPostingDiffValid(loanWithoutIO, loanNameVsIOPostingMap);
         Test.stopTest();
-        
+
         System.assertEquals(false, result, 'Should return false for loan without Investment Orders');
         System.assertEquals(1, interestHandler.errorCount, 'Should have one error for missing Investment Orders');
     }
@@ -625,18 +615,18 @@ private class F2FPaymentFileHelperTest {
         cleanLoan.loan__Invalid_Data__c = false;
         cleanLoan.loan__Loan_Status__c = 'Active - Good Standing';
         insert cleanLoan;
-        
+
         Set<String> reversalIssueLoanSet = new Set<String>();
         // No reversal issues for this loan
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         Boolean result = helper.isNoReversalLPTIssue(cleanLoan, reversalIssueLoanSet);
         Test.stopTest();
-        
+
         System.assertEquals(true, result, 'Should return true for loan without reversal issues');
         System.assertEquals(0, interestHandler.errorCount, 'Should not have errors for clean loan');
     }
@@ -644,18 +634,18 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testIsNoReversalLPTIssueWithIssues() {
         List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = false LIMIT 1];
-        
+
         Set<String> reversalIssueLoanSet = new Set<String>();
         reversalIssueLoanSet.add(loans[0].Name); // This loan has reversal issues
-        
+
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         Boolean result = helper.isNoReversalLPTIssue(loans[0], reversalIssueLoanSet);
         Test.stopTest();
-        
+
         System.assertEquals(false, result, 'Should return false for loan with reversal issues');
         System.assertEquals(1, interestHandler.errorCount, 'Should have one error for reversal issue');
     }
@@ -667,13 +657,13 @@ private class F2FPaymentFileHelperTest {
         interestHandler.errorCount = 1;
         interestHandler.errorList.add('Test error');
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         PageReference pageRef = Page.F2FUploadPaymentFilePage;
         Test.setCurrentPage(pageRef);
         helper.showErrorMessage('interest');
         Test.stopTest();
-        
+
         // Should add ApexPages message for errors
         List<ApexPages.Message> messages = ApexPages.getMessages();
         System.assert(messages.size() > 0, 'Should have ApexPages messages');
@@ -686,13 +676,13 @@ private class F2FPaymentFileHelperTest {
         feesHandler.errorCount = 1;
         feesHandler.errorList.add('Test error');
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(feesHandler, loanAmountMap);
-        
+
         Test.startTest();
         PageReference pageRef = Page.F2FUploadPaymentFilePage;
         Test.setCurrentPage(pageRef);
         helper.showErrorMessage('fees');
         Test.stopTest();
-        
+
         // Should add ApexPages message for errors
         List<ApexPages.Message> messages = ApexPages.getMessages();
         System.assert(messages.size() > 0, 'Should have ApexPages messages');
@@ -703,20 +693,20 @@ private class F2FPaymentFileHelperTest {
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         Test.startTest();
         // Test getErrorListSize
         Integer size = helper.handlerUtilInst.getErrorListSize(interestHandler);
         System.assertEquals(0, size, 'Should return 0 for empty error list');
-        
+
         // Test getErrorCount
         Integer count = helper.handlerUtilInst.getErrorCount(interestHandler);
         System.assertEquals(0, count, 'Should return 0 for zero error count');
-        
+
         // Test incrementErrorCount
         helper.handlerUtilInst.incrementErrorCount(interestHandler);
         System.assertEquals(1, interestHandler.errorCount, 'Should increment error count to 1');
-        
+
         // Test addErrorToList
         helper.handlerUtilInst.addErrorToList(interestHandler, 'Test error');
         System.assertEquals(1, interestHandler.errorList.size(), 'Should add error to list');
@@ -728,20 +718,20 @@ private class F2FPaymentFileHelperTest {
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FFeesPaymentFileHandler feesHandler = new F2FFeesPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(feesHandler, loanAmountMap);
-        
+
         Test.startTest();
         // Test getErrorListSize
         Integer size = helper.handlerUtilInst.getErrorListSize(feesHandler);
         System.assertEquals(0, size, 'Should return 0 for empty error list');
-        
+
         // Test getErrorCount
         Integer count = helper.handlerUtilInst.getErrorCount(feesHandler);
         System.assertEquals(0, count, 'Should return 0 for zero error count');
-        
+
         // Test incrementErrorCount
         helper.handlerUtilInst.incrementErrorCount(feesHandler);
         System.assertEquals(1, feesHandler.errorCount, 'Should increment error count to 1');
-        
+
         // Test addErrorToList
         helper.handlerUtilInst.addErrorToList(feesHandler, 'Test error');
         System.assertEquals(1, feesHandler.errorList.size(), 'Should add error to list');
@@ -753,17 +743,17 @@ private class F2FPaymentFileHelperTest {
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
+
         String invalidHandler = 'Invalid Handler';
-        
+
         Test.startTest();
         // Test methods with invalid handler
         Integer size = helper.handlerUtilInst.getErrorListSize(invalidHandler);
         System.assertEquals(0, size, 'Should return 0 for invalid handler');
-        
+
         Integer count = helper.handlerUtilInst.getErrorCount(invalidHandler);
         System.assertEquals(0, count, 'Should return 0 for invalid handler');
-        
+
         // These methods should handle invalid handler gracefully
         helper.handlerUtilInst.incrementErrorCount(invalidHandler);
         helper.handlerUtilInst.addErrorToList(invalidHandler, 'Test error');
@@ -773,14 +763,14 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testInterestFileValidationEmptyMap() {
         Map<String, Decimal> emptyLoanAmountMap = new Map<String, Decimal>();
-        
+
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, emptyLoanAmountMap);
-        
+
         Test.startTest();
         helper.interestFileValidation();
         Test.stopTest();
-        
+
         // Should handle empty map gracefully
         System.assertEquals(0, interestHandler.errorCount, 'Should not have errors for empty map');
     }
@@ -788,14 +778,14 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testFeesFileValidationEmptyMap() {
         Map<String, Decimal> emptyLoanAmountMap = new Map<String, Decimal>();
-        
+
         F2FFeesPaymentFileHandler feesHandler = new F2FFeesPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(feesHandler, emptyLoanAmountMap);
-        
+
         Test.startTest();
         helper.feesFileValidation();
         Test.stopTest();
-        
+
         // Should handle empty map gracefully
         System.assertEquals(0, feesHandler.errorCount, 'Should not have errors for empty map');
     }
