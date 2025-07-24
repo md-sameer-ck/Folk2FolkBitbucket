@@ -2,9 +2,9 @@
  * @description                : Test class for F2FFeesPaymentFileHandler
  * @author                     : Anshu Kumari Mahato
  * @group                      : Test Class
- * @last modified on           : 16-12-2024
- * @last modified by           : Anshu Kumari Mahato
- * @last modification details  :  
+ * @last modified on           : 24-07-2025
+ * @last modified by           : Md Sameer
+ * @last modification details  :
  * Modifications Log
  * Ver   Date         Author                Modification
  * 1.0   16-05-2024   Anshu Kumari Mahato   Initial Version
@@ -28,14 +28,14 @@ private class F2FFeesPaymentFileHandlerTest {
 
         Account borrowerAccountObj=F2FTestHelper.getAccount();
         borrowerAccountObj.Name = 'Fees Test Borrower';
-        borrowerAccountObj.clcommon__Email__c = 'fees.borrower@mailinator.com';        
+        borrowerAccountObj.clcommon__Email__c = 'fees.borrower@mailinator.com';
         borrowerAccountObj.recordTypeId = borrowerRecordTypeObj;
         borrowerAccountObj.clcommon__Legal_Entity_Type__c = individualLegalEntityObj.Id;
         accountList.add(borrowerAccountObj);
 
         Account investorAccountObj=F2FTestHelper.getAccount();
         investorAccountObj.Name = 'Fees Test Investor';
-        investorAccountObj.clcommon__Email__c = 'fees.investor@mailinator.com';        
+        investorAccountObj.clcommon__Email__c = 'fees.investor@mailinator.com';
         investorAccountObj.recordTypeId = investorRecordTypeObj;
         investorAccountObj.clcommon__Legal_Entity_Type__c = individualLegalEntityObj.Id;
         investorAccountObj.loan__Investor__c = true;
@@ -48,7 +48,7 @@ private class F2FFeesPaymentFileHandlerTest {
 
         // Create contracts with different scenarios
         List<loan__Loan_Account__c> contractList = new List<loan__Loan_Account__c>();
-        
+
         // Single valid contract for testing - will be modified in individual test methods as needed
         loan__Loan_Account__c contractObj=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
         contractObj.loan__Interest_Rate__c = 6.5;
@@ -81,7 +81,7 @@ private class F2FFeesPaymentFileHandlerTest {
         loanPaymentTransactionObj.loan__Rejected__c = false;
         loanPaymentTransactionObj.loan__Reversed__c = false;
         lptList.add(loanPaymentTransactionObj);
-            
+
         loan__Loan_Payment_Transaction__c  loanPaymentObj = F2FTestHelper.returnLoanPayment(contractObj);
         loanPaymentObj.loan__Transaction_Date__c = currentDate;
         loanPaymentObj.loan__Cheque_Number__c = '1234';
@@ -92,10 +92,10 @@ private class F2FFeesPaymentFileHandlerTest {
         loanPaymentObj.loan__Reversed__c = false;
         lptList.add(loanPaymentObj);
         insert lptList;
-        
+
         // Create Fee records
         List<loan__Fee__c> feeList = new List<loan__Fee__c>();
-        
+
         loan__Fee__c loanFeeObj = new loan__Fee__c();
         loanFeeObj.Name = 'Management Fee';
         loanFeeObj.loan__State__c = 'Active';
@@ -124,7 +124,7 @@ private class F2FFeesPaymentFileHandlerTest {
 
         // Create Payment Spreads for all fee types
         List<loan__Loan_Payment_Spread__c> paymentSpreadList = new List<loan__Loan_Payment_Spread__c>();
-        
+
         loan__Loan_Payment_Spread__c paymentSpreadObj = new loan__Loan_Payment_Spread__c();
         paymentSpreadObj.Name = 'management fee_Custom Spread';
         paymentSpreadObj.loan__Order_Of_Payment__c = 'Management Fee';
@@ -161,31 +161,31 @@ private class F2FFeesPaymentFileHandlerTest {
         paymentSpreadList.add(administrationFeeSpreadObj);
 
         insert paymentSpreadList;
-        
+
     }
-    
+
     @isTest
     static void testProcessFeesFileWithMissingRequiredFields() {
         String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference,\\n,Fee Name\n' +
                                 'LAI123, , , ,2023-12-31,paid, ,\\n,Collection Fee\n' +
                                 'LAI1234, ,100.00, ,2023-12-31,paid, ,\\n,Management Fee\n';
-        
+
         F2FFeesPaymentFileHandler feePaymentHandlerInst = new F2FFeesPaymentFileHandler();
-        List<Profile> systemAdminProfileList = [SELECT Id 
-                                                FROM Profile 
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
                                                 WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k2@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
         List<User> adminUserList = [SELECT Id
                                 FROM User
                                 WHERE Email = 'testUser112k2@test.com'];
-        
+
         System.runAs(adminUserList[0]){
             Test.startTest();
             feePaymentHandlerInst.processFeesFile(fileContent);
             Test.stopTest();
         }
-        
+
         // Should have errors for missing fields and validation issues
         System.assert(feePaymentHandlerInst.errorList.size() > 0, 'Should have validation errors');
     }
@@ -194,8 +194,8 @@ private class F2FFeesPaymentFileHandlerTest {
     static void testGetTransactionAmountWithValidAmount() {
         String validAmount = '123.45';
         F2FFeesPaymentFileHandler feePaymentHandlerInst = new F2FFeesPaymentFileHandler();
-        List<Profile> systemAdminProfileList = [SELECT Id 
-                                                FROM Profile 
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
                                                 WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k3@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
@@ -215,8 +215,8 @@ private class F2FFeesPaymentFileHandlerTest {
     static void testGetTransactionAmountWithInvalidAmount() {
         String invalidAmount = 'abc';
         F2FFeesPaymentFileHandler feePaymentHandlerInst = new F2FFeesPaymentFileHandler();
-        List<Profile> systemAdminProfileList = [SELECT Id 
-                                                FROM Profile 
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
                                                 WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k4@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
@@ -236,7 +236,7 @@ private class F2FFeesPaymentFileHandlerTest {
     static void testCheckForErrorsWithBlankValue() {
         String blankValue = '';
         F2FFeesPaymentFileHandler feePaymentHandlerInst = new F2FFeesPaymentFileHandler();
-        List<Profile> systemAdminProfileList = [SELECT Id 
+        List<Profile> systemAdminProfileList = [SELECT Id
                                                 FROM Profile
                                                 WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k5@test.com',systemAdminProfileList[0].Id);
@@ -257,8 +257,8 @@ private class F2FFeesPaymentFileHandlerTest {
     static void testCheckForErrorsWithNonBlankValue() {
         String nonBlankValue = 'Non-empty';
         F2FFeesPaymentFileHandler feePaymentHandlerInst = new F2FFeesPaymentFileHandler();
-        List<Profile> systemAdminProfileList = [SELECT Id 
-                                                FROM Profile 
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
                                                 WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k6@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
@@ -279,13 +279,13 @@ private class F2FFeesPaymentFileHandlerTest {
     static void successMethodFee(){
         String sysDate = String.valueOf(currentDate);
         List<loan__Loan_Account__c> loanQueryList = [SELECT Id,
-                                                            Name 
+                                                            Name
                                                      FROM loan__Loan_Account__c
-                                                     WHERE loan__Invalid_Data__c = false 
+                                                     WHERE loan__Invalid_Data__c = false
                                                      AND loan__Loan_Status__c = 'Active - Good Standing'
                                                      LIMIT 1];
-        List<Profile> systemAdminProfileList = [SELECT Id 
-                                                FROM Profile 
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
                                                 WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k7@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
@@ -314,13 +314,13 @@ private class F2FFeesPaymentFileHandlerTest {
         List<loan__Loan_Account__c> loans = [Select Id,Name FROM loan__Loan_Account__c LIMIT 1];
         loans[0].loan__Invalid_Data__c = true;
         update loans[0];
-        
+
         String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference,\\n,Fee Name\n'
                            + loans[0].Name + ', ,100.00, ,'+sysDate+',paid, ,\\n,Management Fee\n';
-        
+
         F2FFeesPaymentFileHandler handler = new F2FFeesPaymentFileHandler();
-        List<Profile> systemAdminProfileList = [SELECT Id 
-                                                FROM Profile 
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
                                                 WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k8@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
@@ -343,7 +343,7 @@ private class F2FFeesPaymentFileHandlerTest {
             }
         }
         System.assert(hasInvalidDataError, 'Should have specific error for invalid data flag');
-        
+
         // Reset loan for other tests
         loans[0].loan__Invalid_Data__c = false;
         update loans[0];
@@ -356,13 +356,13 @@ private class F2FFeesPaymentFileHandlerTest {
         List<loan__Loan_Account__c> loans = [Select Id,Name FROM loan__Loan_Account__c LIMIT 1];
         loans[0].loan__Loan_Status__c = 'Closed - Obligations met';
         update loans[0];
-        
+
         String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference,\\n,Fee Name\n'
                            + loans[0].Name + ', ,100.00, ,'+sysDate+',paid, ,\\n,Management Fee\n';
-        
+
         F2FFeesPaymentFileHandler handler = new F2FFeesPaymentFileHandler();
-        List<Profile> systemAdminProfileList = [SELECT Id 
-                                                FROM Profile 
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
                                                 WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k9@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
@@ -385,7 +385,7 @@ private class F2FFeesPaymentFileHandlerTest {
             }
         }
         System.assert(hasStatusError, 'Should have specific error for invalid loan status');
-        
+
         // Reset loan for other tests
         loans[0].loan__Loan_Status__c = 'Active - Good Standing';
         update loans[0];
@@ -396,10 +396,10 @@ private class F2FFeesPaymentFileHandlerTest {
         String sysDate = String.valueOf(currentDate);
         String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference,\\n,Fee Name\n'
                            + 'NonExistentLoan, ,100.00, ,'+sysDate+',paid, ,\\n,Management Fee\n';
-        
+
         F2FFeesPaymentFileHandler handler = new F2FFeesPaymentFileHandler();
-        List<Profile> systemAdminProfileList = [SELECT Id 
-                                                FROM Profile 
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
                                                 WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k10@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
@@ -428,20 +428,20 @@ private class F2FFeesPaymentFileHandlerTest {
     static void testProcessFeesFileWithMultipleFeeTypes() {
         String sysDate = String.valueOf(currentDate);
         List<loan__Loan_Account__c> loanQueryList = [SELECT Id,
-                                                            Name 
+                                                            Name
                                                      FROM loan__Loan_Account__c
-                                                     WHERE loan__Invalid_Data__c = false 
+                                                     WHERE loan__Invalid_Data__c = false
                                                      AND loan__Loan_Status__c = 'Active - Good Standing'
                                                      LIMIT 1];
-        
+
         String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference,\\n,Fee Name\n' +
                             loanQueryList[0].name + ', ,100.00, ,'+sysDate+',paid, ,\\n,Management Fee\n' +
                             loanQueryList[0].name + ', ,50.00, ,'+sysDate+',paid, ,\\n,Collection Fee\n' +
                             loanQueryList[0].name + ', ,200.00, ,'+sysDate+',paid, ,\\n,Solicitor Fee\n';
-        
+
         F2FFeesPaymentFileHandler handler = new F2FFeesPaymentFileHandler();
-        List<Profile> systemAdminProfileList = [SELECT Id 
-                                                FROM Profile 
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
                                                 WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k11@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
@@ -455,9 +455,9 @@ private class F2FFeesPaymentFileHandlerTest {
         }
 
         // Verify that multiple fee types were processed
-        List<loan__Loan_Payment_Transaction__c> newLPTs = [SELECT Id, loan__Transaction_Amount__c 
-                                                           FROM loan__Loan_Payment_Transaction__c 
-                                                           WHERE CreatedDate = TODAY 
+        List<loan__Loan_Payment_Transaction__c> newLPTs = [SELECT Id, loan__Transaction_Amount__c
+                                                           FROM loan__Loan_Payment_Transaction__c
+                                                           WHERE CreatedDate = TODAY
                                                            AND loan__Cleared__c = true];
         System.assert(newLPTs.size() > 0, 'Should have created new LPTs for fees');
     }
@@ -466,18 +466,18 @@ private class F2FFeesPaymentFileHandlerTest {
     static void testProcessFeesFileWithInvalidFeeType() {
         String sysDate = String.valueOf(currentDate);
         List<loan__Loan_Account__c> loanQueryList = [SELECT Id,
-                                                            Name 
+                                                            Name
                                                      FROM loan__Loan_Account__c
-                                                     WHERE loan__Invalid_Data__c = false 
+                                                     WHERE loan__Invalid_Data__c = false
                                                      AND loan__Loan_Status__c = 'Active - Good Standing'
                                                      LIMIT 1];
-        
+
         String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference,\\n,Fee Name\n' +
                             loanQueryList[0].name + ', ,100.00, ,'+sysDate+',paid, ,\\n,Invalid Fee Type\n';
-        
+
         F2FFeesPaymentFileHandler handler = new F2FFeesPaymentFileHandler();
-        List<Profile> systemAdminProfileList = [SELECT Id 
-                                                FROM Profile 
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
                                                 WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k12@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
@@ -500,9 +500,9 @@ private class F2FFeesPaymentFileHandlerTest {
         F2FFeesPaymentFileHandler handler = new F2FFeesPaymentFileHandler();
         Map<String, Decimal> emptyMap = new Map<String, Decimal>();
         Set<String> emptySet = new Set<String>();
-        
-        List<Profile> systemAdminProfileList = [SELECT Id 
-                                                FROM Profile 
+
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
                                                 WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k13@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
@@ -514,7 +514,7 @@ private class F2FFeesPaymentFileHandlerTest {
             handler.clearLoanPaymentTransactions(emptyMap, emptySet);
             Test.stopTest();
         }
-        
+
         // Should handle empty maps gracefully
         System.assertEquals(0, handler.errorCount, 'Should not have errors for empty input');
     }
@@ -523,10 +523,10 @@ private class F2FFeesPaymentFileHandlerTest {
     static void testProcessFeesFileWithMissingHeaders() {
         String fileContent = 'Wrong Header,Another Header\n' +
                             'LAI123,100.00\n';
-        
+
         F2FFeesPaymentFileHandler handler = new F2FFeesPaymentFileHandler();
-        List<Profile> systemAdminProfileList = [SELECT Id 
-                                                FROM Profile 
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
                                                 WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k14@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
@@ -547,118 +547,123 @@ private class F2FFeesPaymentFileHandlerTest {
     @isTest
     static void testProcessFeesFileWithNonPaidStatus() {
         String sysDate = String.valueOf(currentDate);
-        List<loan__Loan_Account__c> loanQueryList = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = false AND loan__Loan_Status__c = 'Active - Good Standing' LIMIT 1];
-        if (loanQueryList.isEmpty()) {
-            // Create a new valid loan if none exists
-            List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Fees Test Borrower' LIMIT 1];
-            // Create a unique application for this contract
-            genesis__Applications__c app = F2FTestHelper.getApplication(borrowerAccounts[0].Id);
-            insert app;
-            loan__Loan_Account__c validLoan = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
-            validLoan.loan__Invalid_Data__c = false;
-            validLoan.loan__Loan_Status__c = 'Active - Good Standing';
-            // Do not set Name directly
-            insert validLoan;
-            loanQueryList.add(validLoan);
-        }
-        String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference,\\n,Fee Name\\n' +
-                            loanQueryList[0].name + ', ,100.00, ,' + sysDate + ',failed, ,\\n,Management Fee\\n';
+        List<loan__Loan_Account__c> loanQueryList = [SELECT Id,
+                                                            Name
+                                                     FROM loan__Loan_Account__c
+                                                     WHERE loan__Invalid_Data__c = false
+                                                     AND loan__Loan_Status__c = 'Active - Good Standing'
+                                                     LIMIT 1];
+
+        String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference,\\n,Fee Name\n' +
+                            loanQueryList[0].name + ', ,100.00, ,'+sysDate+',failed, ,\\n,Management Fee\n';
+
         F2FFeesPaymentFileHandler handler = new F2FFeesPaymentFileHandler();
-        List<Profile> systemAdminProfileList = [SELECT Id FROM Profile WHERE Name = 'System Administrator'];
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
+                                                WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k15@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
-        List<User> adminUserList = [SELECT Id FROM User WHERE Email = 'testUser112k15@test.com'];
+        List<User> adminUserList = [SELECT Id
+                                    FROM User
+                                    WHERE Email = 'testUser112k15@test.com'];
         System.runAs(adminUserList[0]){
             Test.startTest();
             handler.processFeesFile(fileContent);
             Test.stopTest();
         }
+
         // Should process without creating LPTs for non-paid status
-        List<loan__Loan_Payment_Transaction__c> newLPTs = [SELECT Id FROM loan__Loan_Payment_Transaction__c WHERE CreatedDate = TODAY];
+        List<loan__Loan_Payment_Transaction__c> newLPTs = [SELECT Id
+                                                           FROM loan__Loan_Payment_Transaction__c
+                                                           WHERE CreatedDate = TODAY];
         System.assertEquals(0, newLPTs.size(), 'Should not create LPTs for non-paid status');
     }
 
     @isTest
     static void testProcessFeesFileRejectedLPTs() {
         String sysDate = String.valueOf(currentDate);
-        List<loan__Loan_Account__c> loanQueryList = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = false AND loan__Loan_Status__c = 'Active - Good Standing' LIMIT 1];
-        if (loanQueryList.isEmpty()) {
-            // Create a new valid loan if none exists
-            List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Fees Test Borrower' LIMIT 1];
-            // Create a unique application for this contract
-            genesis__Applications__c app = F2FTestHelper.getApplication(borrowerAccounts[0].Id);
-            insert app;
-            loan__Loan_Account__c validLoan = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
-            validLoan.loan__Invalid_Data__c = false;
-            validLoan.loan__Loan_Status__c = 'Active - Good Standing';
-            // Do not set Name directly
-            insert validLoan;
-            loanQueryList.add(validLoan);
-        }
-        String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference,\\n,Fee Name\\n' +
-                            loanQueryList[0].name + ', ,100.00, ,' + sysDate + ',paid, ,\\n,Management Fee\\n';
+        List<loan__Loan_Account__c> loanQueryList = [SELECT Id,
+                                                            Name
+                                                     FROM loan__Loan_Account__c
+                                                     WHERE loan__Invalid_Data__c = false
+                                                     AND loan__Loan_Status__c = 'Active - Good Standing'
+                                                     LIMIT 1];
+
+        String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference,\\n,Fee Name\n' +
+                            loanQueryList[0].name + ', ,100.00, ,'+sysDate+',paid, ,\\n,Management Fee\n';
+
         F2FFeesPaymentFileHandler handler = new F2FFeesPaymentFileHandler();
-        List<Profile> systemAdminProfileList = [SELECT Id FROM Profile WHERE Name = 'System Administrator'];
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
+                                                WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k16@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
-        List<User> adminUserList = [SELECT Id FROM User WHERE Email = 'testUser112k16@test.com'];
+        List<User> adminUserList = [SELECT Id
+                                    FROM User
+                                    WHERE Email = 'testUser112k16@test.com'];
         System.runAs(adminUserList[0]){
             Test.startTest();
             handler.processFeesFile(fileContent);
             Test.stopTest();
         }
+
         // Verify that existing LPTs were rejected
-        List<loan__Loan_Payment_Transaction__c> rejectedLPTs = [SELECT Id FROM loan__Loan_Payment_Transaction__c WHERE loan__Rejected__c = true AND loan__Loan_Account__c = :loanQueryList[0].Id];
+        List<loan__Loan_Payment_Transaction__c> rejectedLPTs = [SELECT Id
+                                                                FROM loan__Loan_Payment_Transaction__c
+                                                                WHERE loan__Rejected__c = true
+                                                                AND loan__Loan_Account__c = :loanQueryList[0].Id];
         System.assert(rejectedLPTs.size() > 0, 'Should have rejected existing LPTs');
     }
 
     @isTest
     static void testProcessFeesFileAllFeeTypes() {
         String sysDate = String.valueOf(currentDate);
-        List<loan__Loan_Account__c> loanQueryList = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = false AND loan__Loan_Status__c = 'Active - Good Standing' LIMIT 1];
-        if (loanQueryList.isEmpty()) {
-            // Create a new valid loan if none exists
-            List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Fees Test Borrower' LIMIT 1];
-            // Create a unique application for this contract
-            genesis__Applications__c app = F2FTestHelper.getApplication(borrowerAccounts[0].Id);
-            insert app;
-            loan__Loan_Account__c validLoan = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
-            validLoan.loan__Invalid_Data__c = false;
-            validLoan.loan__Loan_Status__c = 'Active - Good Standing';
-            // Do not set Name directly
-            insert validLoan;
-            loanQueryList.add(validLoan);
-        }
-        String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference,\\n,Fee Name\\n' +
-                            loanQueryList[0].name + ', ,100.00, ,' + sysDate + ',paid, ,\\n,Management Fee\\n' +
-                            loanQueryList[0].name + ', ,50.00, ,' + sysDate + ',paid, ,\\n,Collection Fee\\n' +
-                            loanQueryList[0].name + ', ,200.00, ,' + sysDate + ',paid, ,\\n,Solicitor Fee\\n' +
-                            loanQueryList[0].name + ', ,150.00, ,' + sysDate + ',paid, ,\\n,Early Termination Fee\\n' +
-                            loanQueryList[0].name + ', ,75.00, ,' + sysDate + ',paid, ,\\n,Delinquent Interest Fee\\n' +
-                            loanQueryList[0].name + ', ,125.00, ,' + sysDate + ',paid, ,\\n,Late Redemption Fee\\n' +
-                            loanQueryList[0].name + ', ,80.00, ,' + sysDate + ',paid, ,\\n,Administration Fee\\n';
+        List<loan__Loan_Account__c> loanQueryList = [SELECT Id,
+                                                            Name
+                                                     FROM loan__Loan_Account__c
+                                                     WHERE loan__Invalid_Data__c = false
+                                                     AND loan__Loan_Status__c = 'Active - Good Standing'
+                                                     LIMIT 1];
+
+        String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference,\\n,Fee Name\n' +
+                            loanQueryList[0].name + ', ,100.00, ,'+sysDate+',paid, ,\\n,Management Fee\n' +
+                            loanQueryList[0].name + ', ,50.00, ,'+sysDate+',paid, ,\\n,Collection Fee\n' +
+                            loanQueryList[0].name + ', ,200.00, ,'+sysDate+',paid, ,\\n,Solicitor Fee\n' +
+                            loanQueryList[0].name + ', ,150.00, ,'+sysDate+',paid, ,\\n,Early Termination Fee\n' +
+                            loanQueryList[0].name + ', ,75.00, ,'+sysDate+',paid, ,\\n,Delinquent Interest Fee\n' +
+                            loanQueryList[0].name + ', ,125.00, ,'+sysDate+',paid, ,\\n,Late Redemption Fee\n' +
+                            loanQueryList[0].name + ', ,80.00, ,'+sysDate+',paid, ,\\n,Administration Fee\n';
+
         F2FFeesPaymentFileHandler handler = new F2FFeesPaymentFileHandler();
-        List<Profile> systemAdminProfileList = [SELECT Id FROM Profile WHERE Name = 'System Administrator'];
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
+                                                WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k17@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
-        List<User> adminUserList = [SELECT Id FROM User WHERE Email = 'testUser112k17@test.com'];
+        List<User> adminUserList = [SELECT Id
+                                    FROM User
+                                    WHERE Email = 'testUser112k17@test.com'];
         System.runAs(adminUserList[0]){
             Test.startTest();
             handler.processFeesFile(fileContent);
             Test.stopTest();
         }
+
         // Verify that all fee types were processed
-        List<loan__Loan_Payment_Transaction__c> newLPTs = [SELECT Id, loan__Transaction_Amount__c FROM loan__Loan_Payment_Transaction__c WHERE CreatedDate = TODAY AND loan__Cleared__c = true];
+        List<loan__Loan_Payment_Transaction__c> newLPTs = [SELECT Id, loan__Transaction_Amount__c
+                                                           FROM loan__Loan_Payment_Transaction__c
+                                                           WHERE CreatedDate = TODAY
+                                                           AND loan__Cleared__c = true];
         System.assert(newLPTs.size() >= 7, 'Should have created LPTs for all fee types');
     }
 
     @isTest
     static void testProcessFeesFileEmptyContent() {
         String fileContent = '';
-        
+
         F2FFeesPaymentFileHandler handler = new F2FFeesPaymentFileHandler();
-        List<Profile> systemAdminProfileList = [SELECT Id 
-                                                FROM Profile 
+        List<Profile> systemAdminProfileList = [SELECT Id
+                                                FROM Profile
                                                 WHERE Name = 'System Administrator'];
         User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser','testUser112k18@test.com',systemAdminProfileList[0].Id);
         Database.insert(userToInsertObj);
