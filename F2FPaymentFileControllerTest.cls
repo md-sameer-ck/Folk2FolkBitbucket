@@ -80,7 +80,7 @@ global class F2FPaymentFileControllerTest {
 
         // Create Automated Payment Setup for Interest handling
         loan__Automated_Payment_Setup__c apsObj = new loan__Automated_Payment_Setup__c();
-        apsObj.loan__Loan_Account__c = contract.Id;
+        apsObj.loan__CL_Contract__c = contract.Id;
         apsObj.loan__Payment_Mode__c = loanPaymentModeObj.Id;
         apsObj.loan__Amount_Type__c = 'Last Billed Amount';
         apsObj.loan__Type__c = 'Recurring';
