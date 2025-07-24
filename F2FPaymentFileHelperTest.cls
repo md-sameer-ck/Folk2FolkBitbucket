@@ -28,15 +28,15 @@ private class F2FPaymentFileHelperTest {
         List<Account> accountList = new List<Account>();
 
         Account borrowerAccountObj=F2FTestHelper.getAccount();
-        borrowerAccountObj.Name = 'Borrower 1';
-        borrowerAccountObj.clcommon__Email__c = 'borrower@mailinator.com';        
+        borrowerAccountObj.Name = 'Helper Test Borrower';
+        borrowerAccountObj.clcommon__Email__c = 'helper.borrower@mailinator.com';        
         borrowerAccountObj.recordTypeId = borrowerRecordTypeObj;
         borrowerAccountObj.clcommon__Legal_Entity_Type__c = individualLegalEntity.Id;
         accountList.add(borrowerAccountObj);
 
         Account investorAccountObj=F2FTestHelper.getAccount();
-        investorAccountObj.Name = 'Investor 1';
-        investorAccountObj.clcommon__Email__c = 'investor@mailinator.com';        
+        investorAccountObj.Name = 'Helper Test Investor';
+        investorAccountObj.clcommon__Email__c = 'helper.investor@mailinator.com';        
         investorAccountObj.recordTypeId = investorRecordTypeObj;
         investorAccountObj.clcommon__Legal_Entity_Type__c = individualLegalEntity.Id;
         accountList.add(investorAccountObj);
@@ -564,7 +564,7 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testIsPostingDiffValidWithNoInvestmentOrders() {
         // Create a loan without Investment Orders
-        List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Borrower 1' LIMIT 1];
+        List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Helper Test Borrower' LIMIT 1];
         loan__Loan_Account__c loanWithoutIO = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
         loanWithoutIO.loan__Interest_Posted__c = 500;
         loanWithoutIO.loan__Invalid_Data__c = false;
@@ -589,7 +589,7 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testIsNoReversalLPTIssueWithNoIssues() {
         // Create a loan without reversal issues
-        List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Borrower 1' LIMIT 1];
+        List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Helper Test Borrower' LIMIT 1];
         loan__Loan_Account__c cleanLoan = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
         cleanLoan.loan__Invalid_Data__c = false;
         cleanLoan.loan__Loan_Status__c = 'Active - Good Standing';

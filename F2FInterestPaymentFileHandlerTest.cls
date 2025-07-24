@@ -28,15 +28,15 @@ private class F2FInterestPaymentFileHandlerTest {
         List<Account> accountList = new List<Account>();
 
         Account borrowerAccountObj=F2FTestHelper.getAccount();
-        borrowerAccountObj.Name = 'Borrower 1';
-        borrowerAccountObj.clcommon__Email__c = 'borrower@mailinator.com';        
+        borrowerAccountObj.Name = 'Interest Test Borrower';
+        borrowerAccountObj.clcommon__Email__c = 'interest.borrower@mailinator.com';        
         borrowerAccountObj.recordTypeId = borrowerRecordTypeObj;
         borrowerAccountObj.clcommon__Legal_Entity_Type__c = individualLegalEntity.Id;
         accountList.add(borrowerAccountObj);
 
         Account investorAccountObj=F2FTestHelper.getAccount();
-        investorAccountObj.Name = 'Investor 1';
-        investorAccountObj.clcommon__Email__c = 'investor@mailinator.com';        
+        investorAccountObj.Name = 'Interest Test Investor';
+        investorAccountObj.clcommon__Email__c = 'interest.investor@mailinator.com';        
         investorAccountObj.recordTypeId = investorRecordTypeObj;
         investorAccountObj.clcommon__Legal_Entity_Type__c = individualLegalEntity.Id;
         accountList.add(investorAccountObj);
@@ -118,16 +118,19 @@ private class F2FInterestPaymentFileHandlerTest {
         loan__Automated_Payment_Setup__c interestAPSObj = StandardFeaturesTestHelper.getautomatedPaymentSetup(contractList[0], assertPaymentModeList[0], queryAccountList[0]);
         interestAPSObj.loan__Amount_Type__c = 'Last Billed Amount';
         interestAPSObj.loan__Type__c = 'Recurring';
+        interestAPSObj.loan__Frequency__c = 'Billing Frequency';
         apsList.add(interestAPSObj);
 
         loan__Automated_Payment_Setup__c interestAPSObj2 = StandardFeaturesTestHelper.getautomatedPaymentSetup(contractList[1], assertPaymentModeList[0], queryAccountList[0]);
         interestAPSObj2.loan__Amount_Type__c = 'Last Billed Amount';
         interestAPSObj2.loan__Type__c = 'Recurring';
+        interestAPSObj2.loan__Frequency__c = 'Billing Frequency';
         apsList.add(interestAPSObj2);
 
         loan__Automated_Payment_Setup__c interestAPSObj3 = StandardFeaturesTestHelper.getautomatedPaymentSetup(contractList[2], assertPaymentModeList[0], queryAccountList[0]);
         interestAPSObj3.loan__Amount_Type__c = 'Last Billed Amount';
         interestAPSObj3.loan__Type__c = 'Recurring';
+        interestAPSObj3.loan__Frequency__c = 'Billing Frequency';
         apsList.add(interestAPSObj3);
 
         if(apsList.size() > 0){
@@ -360,7 +363,7 @@ private class F2FInterestPaymentFileHandlerTest {
         String sysDate = String.valueOf(currentDate);
         
         // Create a loan without Investment Orders
-        List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Borrower 1' LIMIT 1];
+        List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Interest Test Borrower' LIMIT 1];
         loan__Loan_Account__c loanWithoutIO = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
         loanWithoutIO.loan__Interest_Posted__c = 500;
         loanWithoutIO.loan__Invalid_Data__c = false;
