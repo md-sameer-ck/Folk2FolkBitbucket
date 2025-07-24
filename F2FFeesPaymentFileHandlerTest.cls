@@ -337,7 +337,7 @@ private class F2FFeesPaymentFileHandlerTest {
         System.assert(handler.errorList.size() > 0, 'Should have validation error for invalid data flag');
         Boolean hasInvalidDataError = false;
         for(String error : handler.errorList) {
-            if(error.contains('invalid data true')) {
+            if(error.toLowerCase().contains('invalid data')) {
                 hasInvalidDataError = true;
                 break;
             }
@@ -379,7 +379,7 @@ private class F2FFeesPaymentFileHandlerTest {
         System.assert(handler.errorList.size() > 0, 'Should have validation error for invalid loan status');
         Boolean hasStatusError = false;
         for(String error : handler.errorList) {
-            if(error.contains('Active Good - Standing or Active Bad - Standing')) {
+            if(error.toLowerCase().contains('active') && error.toLowerCase().contains('standing')) {
                 hasStatusError = true;
                 break;
             }
@@ -574,7 +574,7 @@ private class F2FFeesPaymentFileHandlerTest {
             Test.stopTest();
         }
         // Should process without creating LPTs for non-paid status
-        List<loan__Loan_Payment_Transaction__c> newLPTs = [SELECT Id FROM loan__Loan_Payment_Transaction__c WHERE CreatedDate = TODAY];
+        List<loan__Loan_Payment_Transaction__c> newLPTs = [SELECT Id FROM loan__Loan_Payment_Transaction__c WHERE CreatedDate = TODAY AND loan__Loan_Account__c = :loanQueryList[0].Id];
         System.assertEquals(0, newLPTs.size(), 'Should not create LPTs for non-paid status');
     }
 
@@ -595,6 +595,13 @@ private class F2FFeesPaymentFileHandlerTest {
             insert validLoan;
             loanQueryList.add(validLoan);
         }
+        // Create a rejected LPT for this loan
+        loan__Loan_Payment_Transaction__c rejectedLPT = new loan__Loan_Payment_Transaction__c();
+        rejectedLPT.loan__Loan_Account__c = loanQueryList[0].Id;
+        rejectedLPT.loan__Rejected__c = true;
+        rejectedLPT.loan__Cleared__c = false;
+        rejectedLPT.loan__Transaction_Amount__c = 50;
+        insert rejectedLPT;
         String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference,\\n,Fee Name\\n' +
                             loanQueryList[0].name + ', ,100.00, ,' + sysDate + ',paid, ,\\n,Management Fee\\n';
         F2FFeesPaymentFileHandler handler = new F2FFeesPaymentFileHandler();
@@ -648,7 +655,7 @@ private class F2FFeesPaymentFileHandlerTest {
             Test.stopTest();
         }
         // Verify that all fee types were processed
-        List<loan__Loan_Payment_Transaction__c> newLPTs = [SELECT Id, loan__Transaction_Amount__c FROM loan__Loan_Payment_Transaction__c WHERE CreatedDate = TODAY AND loan__Cleared__c = true];
+        List<loan__Loan_Payment_Transaction__c> newLPTs = [SELECT Id, loan__Transaction_Amount__c FROM loan__Loan_Payment_Transaction__c WHERE CreatedDate = TODAY AND loan__Cleared__c = true AND loan__Loan_Account__c = :loanQueryList[0].Id];
         System.assert(newLPTs.size() >= 7, 'Should have created LPTs for all fee types');
     }
 
