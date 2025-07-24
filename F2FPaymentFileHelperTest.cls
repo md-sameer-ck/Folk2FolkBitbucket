@@ -453,15 +453,20 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testIsLoanNotInvalidDataWithInvalidLoan() {
         List<loan__Loan_Account__c> invalidLoans = [SELECT Id, Name, loan__Invalid_Data__c FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = true LIMIT 1];
-        
+        if (invalidLoans.isEmpty()) {
+            // Create a new invalid loan if none exists
+            List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Helper Test Borrower' LIMIT 1];
+            loan__Loan_Account__c invalidLoan = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
+            invalidLoan.loan__Invalid_Data__c = true;
+            insert invalidLoan;
+            invalidLoans.add(invalidLoan);
+        }
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
         Test.startTest();
         Boolean result = helper.isLoanNotInvalidData(invalidLoans[0]);
         Test.stopTest();
-        
         System.assertEquals(false, result, 'Should return false for loan with invalid data flag');
         System.assertEquals(1, interestHandler.errorCount, 'Should have one error for invalid loan');
     }
@@ -485,15 +490,20 @@ private class F2FPaymentFileHelperTest {
     @isTest
     static void testIsLoanStatusValidWithInvalidStatus() {
         List<loan__Loan_Account__c> invalidLoans = [SELECT Id, Name, loan__Loan_Status__c FROM loan__Loan_Account__c WHERE loan__Loan_Status__c = 'Closed - Obligations met' LIMIT 1];
-        
+        if (invalidLoans.isEmpty()) {
+            // Create a new loan with invalid status if none exists
+            List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Helper Test Borrower' LIMIT 1];
+            loan__Loan_Account__c invalidLoan = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
+            invalidLoan.loan__Loan_Status__c = 'Closed - Obligations met';
+            insert invalidLoan;
+            invalidLoans.add(invalidLoan);
+        }
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
-        
         Test.startTest();
         Boolean result = helper.isLoanStatusValid(invalidLoans[0]);
         Test.stopTest();
-        
         System.assertEquals(false, result, 'Should return false for invalid loan status');
         System.assertEquals(1, interestHandler.errorCount, 'Should have one error for invalid status');
     }
