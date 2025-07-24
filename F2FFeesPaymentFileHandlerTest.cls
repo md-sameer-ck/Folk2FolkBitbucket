@@ -551,10 +551,13 @@ private class F2FFeesPaymentFileHandlerTest {
         if (loanQueryList.isEmpty()) {
             // Create a new valid loan if none exists
             List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Fees Test Borrower' LIMIT 1];
+            // Create a unique application for this contract
+            genesis__Applications__c app = F2FTestHelper.getApplication(borrowerAccounts[0].Id);
+            insert app;
             loan__Loan_Account__c validLoan = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
             validLoan.loan__Invalid_Data__c = false;
             validLoan.loan__Loan_Status__c = 'Active - Good Standing';
-            validLoan.Name = 'ValidLoan_' + System.currentTimeMillis();
+            // Do not set Name directly
             insert validLoan;
             loanQueryList.add(validLoan);
         }
@@ -582,10 +585,13 @@ private class F2FFeesPaymentFileHandlerTest {
         if (loanQueryList.isEmpty()) {
             // Create a new valid loan if none exists
             List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Fees Test Borrower' LIMIT 1];
+            // Create a unique application for this contract
+            genesis__Applications__c app = F2FTestHelper.getApplication(borrowerAccounts[0].Id);
+            insert app;
             loan__Loan_Account__c validLoan = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
             validLoan.loan__Invalid_Data__c = false;
             validLoan.loan__Loan_Status__c = 'Active - Good Standing';
-            validLoan.Name = 'ValidLoan_' + System.currentTimeMillis();
+            // Do not set Name directly
             insert validLoan;
             loanQueryList.add(validLoan);
         }
@@ -613,10 +619,13 @@ private class F2FFeesPaymentFileHandlerTest {
         if (loanQueryList.isEmpty()) {
             // Create a new valid loan if none exists
             List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Fees Test Borrower' LIMIT 1];
+            // Create a unique application for this contract
+            genesis__Applications__c app = F2FTestHelper.getApplication(borrowerAccounts[0].Id);
+            insert app;
             loan__Loan_Account__c validLoan = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
             validLoan.loan__Invalid_Data__c = false;
             validLoan.loan__Loan_Status__c = 'Active - Good Standing';
-            validLoan.Name = 'ValidLoan_' + System.currentTimeMillis();
+            // Do not set Name directly
             insert validLoan;
             loanQueryList.add(validLoan);
         }
