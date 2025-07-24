@@ -43,6 +43,8 @@ global class F2FPaymentFileControllerTest {
         investorAccount.clcommon__Email__c = 'controller.investor@mailinator.com';        
         investorAccount.recordTypeId = investorRecordType;
         investorAccount.clcommon__Legal_Entity_Type__c = individualLegalEntity.Id;
+        investorAccount.loan__Investor__c = true;
+        investorAccount.Are_you_a_UK_tax_resident__c = true;
         accountList.add(investorAccount);
 
         if(accountList!=null && accountList.size()>0){
