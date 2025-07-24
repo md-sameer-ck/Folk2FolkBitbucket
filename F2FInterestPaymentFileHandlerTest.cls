@@ -361,11 +361,14 @@ private class F2FInterestPaymentFileHandlerTest {
         String sysDate = String.valueOf(currentDate);
         // Create a loan without Investment Orders
         List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Interest Test Borrower' LIMIT 1];
+        // Create a unique application for this contract
+        genesis__Applications__c app = F2FTestHelper.getApplication(borrowerAccounts[0].Id);
+        insert app;
         loan__Loan_Account__c loanWithoutIO = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
         loanWithoutIO.loan__Interest_Posted__c = 500;
         loanWithoutIO.loan__Invalid_Data__c = false;
         loanWithoutIO.loan__Loan_Status__c = 'Active - Good Standing';
-        loanWithoutIO.Name = 'LoanWithoutIO_' + System.currentTimeMillis(); // Ensure unique name
+        // Do not set Name directly
         insert loanWithoutIO;
         String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference\\n'
                            + loanWithoutIO.Name + ', ,100.00, ,' + sysDate + ',paid, \\n';
@@ -577,10 +580,13 @@ private class F2FInterestPaymentFileHandlerTest {
         if (loanQueryObj.isEmpty()) {
             // Create a new valid loan if none exists
             List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Interest Test Borrower' LIMIT 1];
+            // Create a unique application for this contract
+            genesis__Applications__c app = F2FTestHelper.getApplication(borrowerAccounts[0].Id);
+            insert app;
             loan__Loan_Account__c validLoan = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
             validLoan.loan__Invalid_Data__c = false;
             validLoan.loan__Loan_Status__c = 'Active - Good Standing';
-            validLoan.Name = 'ValidLoan_' + System.currentTimeMillis();
+            // Do not set Name directly
             insert validLoan;
             loanQueryObj.add(validLoan);
         }
@@ -594,7 +600,7 @@ private class F2FInterestPaymentFileHandlerTest {
             // Create a new LPT if none exists
             loan__Loan_Payment_Transaction__c lpt = F2FTestHelper.returnLoanPayment(loanQueryObj[0]);
             lpt.loan__Cleared__c = false;
-            lpt.Name = 'LPT_' + System.currentTimeMillis();
+            // Do not set Name directly
             insert lpt;
             lptList.add(lpt);
         }
