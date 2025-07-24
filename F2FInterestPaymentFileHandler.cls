@@ -9,9 +9,9 @@ public inherited sharing class F2FInterestPaymentFileHandler {
 
     public List<String> errorList = new List<String>();
     public Integer errorCount = F2FLoanConstants.ZERO;
-    private static final String LPT_COULD_NOT_CLEARED = 'could not be cleared. Please check if LPTs with older Transaction Date exist.';
-    Set<Id> clearedLptIdSet = new Set<Id>();
-    Map<Id, loan__Loan_Payment_Transaction__c> lptIdVsLptRecordMap;
+    public static final String LPT_COULD_NOT_CLEARED = 'could not be cleared. Please check if LPTs with older Transaction Date exist.';
+    public Set<Id> clearedLptIdSet = new Set<Id>();
+    public Map<Id, loan__Loan_Payment_Transaction__c> lptIdVsLptRecordMap;
 
     /**
     * @description Processes the content of the interest payment file, extracting and validating data, and initiating loan payment transaction clearing.
