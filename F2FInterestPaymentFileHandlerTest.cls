@@ -39,6 +39,8 @@ private class F2FInterestPaymentFileHandlerTest {
         investorAccountObj.clcommon__Email__c = 'interest.investor@mailinator.com';        
         investorAccountObj.recordTypeId = investorRecordTypeObj;
         investorAccountObj.clcommon__Legal_Entity_Type__c = individualLegalEntity.Id;
+        investorAccountObj.loan__Investor__c = true;
+        investorAccountObj.Are_you_a_UK_tax_resident__c = true;
         accountList.add(investorAccountObj);
 
         if(accountList!=null && accountList.size()>0){
@@ -51,7 +53,7 @@ private class F2FInterestPaymentFileHandlerTest {
         // Create contracts with different scenarios
         List<loan__Loan_Account__c> contractList = new List<loan__Loan_Account__c>();
         
-        // Valid contract for successful tests
+        // Single valid contract for testing - will be modified in individual test methods as needed
         loan__Loan_Account__c contractObj=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
         contractObj.loan__Interest_Rate__c = 6.5;
         contractObj.loan__Previous_Installment_Date__c = Date.valueOf('2021-01-01');
@@ -66,26 +68,6 @@ private class F2FInterestPaymentFileHandlerTest {
         contractObj.loan__Loan_Status__c = 'Active - Good Standing';
         contractList.add(contractObj);
 
-        // Contract with invalid data flag for testing validation
-        loan__Loan_Account__c invalidDataContract=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
-        invalidDataContract.loan__Interest_Rate__c = 6.5;
-        invalidDataContract.loan__Interest_Posted__c = 500;
-        invalidDataContract.loan__Principal_Remaining__c = 5000;
-        invalidDataContract.loan__Loan_Amount__c = 5000;
-        invalidDataContract.loan__Invalid_Data__c = true; // Invalid data flag set
-        invalidDataContract.loan__Loan_Status__c = 'Active - Good Standing';
-        contractList.add(invalidDataContract);
-
-        // Contract with invalid status for testing validation
-        loan__Loan_Account__c invalidStatusContract=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
-        invalidStatusContract.loan__Interest_Rate__c = 6.5;
-        invalidStatusContract.loan__Interest_Posted__c = 500;
-        invalidStatusContract.loan__Principal_Remaining__c = 5000;
-        invalidStatusContract.loan__Loan_Amount__c = 5000;
-        invalidStatusContract.loan__Invalid_Data__c = false;
-        invalidStatusContract.loan__Loan_Status__c = 'Closed - Obligations met'; // Invalid status
-        contractList.add(invalidStatusContract);
-
         Database.update(contractList);
 
         // Create Investment Orders (Investor Loans) for validation
@@ -96,7 +78,7 @@ private class F2FInterestPaymentFileHandlerTest {
         investorLoanList.add(investorLoan);
 
         // Investor loan with different interest posted for difference validation
-        loan__Investor_Loan__c investorLoan2 = F2FTestHelper.returnloanInvestor(invalidDataContract);
+        loan__Investor_Loan__c investorLoan2 = F2FTestHelper.returnloanInvestor(contractObj);
         investorLoanList.add(investorLoan2);
 
         insert investorLoanList;
@@ -121,13 +103,13 @@ private class F2FInterestPaymentFileHandlerTest {
         interestAPSObj.loan__Frequency__c = 'Billing Frequency';
         apsList.add(interestAPSObj);
 
-        loan__Automated_Payment_Setup__c interestAPSObj2 = StandardFeaturesTestHelper.getautomatedPaymentSetup(contractList[1], assertPaymentModeList[0], queryAccountList[0]);
+        loan__Automated_Payment_Setup__c interestAPSObj2 = StandardFeaturesTestHelper.getautomatedPaymentSetup(contractList[0], assertPaymentModeList[0], queryAccountList[0]);
         interestAPSObj2.loan__Amount_Type__c = 'Last Billed Amount';
         interestAPSObj2.loan__Type__c = 'Recurring';
         interestAPSObj2.loan__Frequency__c = 'Billing Frequency';
         apsList.add(interestAPSObj2);
 
-        loan__Automated_Payment_Setup__c interestAPSObj3 = StandardFeaturesTestHelper.getautomatedPaymentSetup(contractList[2], assertPaymentModeList[0], queryAccountList[0]);
+        loan__Automated_Payment_Setup__c interestAPSObj3 = StandardFeaturesTestHelper.getautomatedPaymentSetup(contractList[0], assertPaymentModeList[0], queryAccountList[0]);
         interestAPSObj3.loan__Amount_Type__c = 'Last Billed Amount';
         interestAPSObj3.loan__Type__c = 'Recurring';
         interestAPSObj3.loan__Frequency__c = 'Billing Frequency';
@@ -259,9 +241,13 @@ private class F2FInterestPaymentFileHandlerTest {
     @isTest
     static void testLoanWithInvalidDataFlag() {
         String sysDate = String.valueOf(currentDate);
-        List<loan__Loan_Account__c> invalidLoanQueryObj = [Select Id,Name FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = true LIMIT 1];
+        // Get the existing loan and modify it for this test
+        List<loan__Loan_Account__c> loans = [Select Id,Name FROM loan__Loan_Account__c LIMIT 1];
+        loans[0].loan__Invalid_Data__c = true;
+        update loans[0];
+        
         String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference\n'
-                           + invalidLoanQueryObj[0].Name + ', ,100.00, ,'+sysDate+',paid, \n';
+                           + loans[0].Name + ', ,100.00, ,'+sysDate+',paid, \n';
         
         F2FInterestPaymentFileHandler handler = new F2FInterestPaymentFileHandler();
         List<Profile> systemAdminProfileList = [SELECT Id 
@@ -288,14 +274,22 @@ private class F2FInterestPaymentFileHandlerTest {
             }
         }
         System.assert(hasInvalidDataError, 'Should have specific error for invalid data flag');
+        
+        // Reset loan for other tests
+        loans[0].loan__Invalid_Data__c = false;
+        update loans[0];
     }
 
     @isTest
     static void testLoanWithInvalidStatus() {
         String sysDate = String.valueOf(currentDate);
-        List<loan__Loan_Account__c> invalidStatusLoanQueryObj = [Select Id,Name FROM loan__Loan_Account__c WHERE loan__Loan_Status__c = 'Closed - Obligations met' LIMIT 1];
+        // Get the existing loan and modify it for this test
+        List<loan__Loan_Account__c> loans = [Select Id,Name FROM loan__Loan_Account__c LIMIT 1];
+        loans[0].loan__Loan_Status__c = 'Closed - Obligations met';
+        update loans[0];
+        
         String fileContent = 'Reference Number,Account Name,Amount,Customer Id,Due Date,Status,Transaction Reference\n'
-                           + invalidStatusLoanQueryObj[0].Name + ', ,100.00, ,'+sysDate+',paid, \n';
+                           + loans[0].Name + ', ,100.00, ,'+sysDate+',paid, \n';
         
         F2FInterestPaymentFileHandler handler = new F2FInterestPaymentFileHandler();
         List<Profile> systemAdminProfileList = [SELECT Id 
@@ -322,6 +316,10 @@ private class F2FInterestPaymentFileHandlerTest {
             }
         }
         System.assert(hasStatusError, 'Should have specific error for invalid loan status');
+        
+        // Reset loan for other tests
+        loans[0].loan__Loan_Status__c = 'Active - Good Standing';
+        update loans[0];
     }
 
     @isTest

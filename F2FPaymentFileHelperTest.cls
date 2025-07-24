@@ -39,6 +39,8 @@ private class F2FPaymentFileHelperTest {
         investorAccountObj.clcommon__Email__c = 'helper.investor@mailinator.com';        
         investorAccountObj.recordTypeId = investorRecordTypeObj;
         investorAccountObj.clcommon__Legal_Entity_Type__c = individualLegalEntity.Id;
+        investorAccountObj.loan__Investor__c = true;
+        investorAccountObj.Are_you_a_UK_tax_resident__c = true;
         accountList.add(investorAccountObj);
 
         if(accountList!=null && accountList.size()>0){
@@ -48,7 +50,7 @@ private class F2FPaymentFileHelperTest {
         // Create contracts with different scenarios
         List<loan__Loan_Account__c> contractList = new List<loan__Loan_Account__c>();
         
-        // Valid contract for successful tests
+        // Single valid contract for testing - will be modified in individual test methods as needed
         loan__Loan_Account__c contractObj=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
         contractObj.loan__Interest_Rate__c = 6.5;
         contractObj.loan__Interest_Posted__c = 1000;
@@ -57,27 +59,6 @@ private class F2FPaymentFileHelperTest {
         contractObj.loan__Invalid_Data__c = false;
         contractObj.loan__Loan_Status__c = 'Active - Good Standing';
         contractList.add(contractObj);
-
-        // Contract with invalid data flag
-        loan__Loan_Account__c invalidDataContract=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
-        invalidDataContract.loan__Interest_Posted__c = 500;
-        invalidDataContract.loan__Invalid_Data__c = true;
-        invalidDataContract.loan__Loan_Status__c = 'Active - Good Standing';
-        contractList.add(invalidDataContract);
-
-        // Contract with invalid status
-        loan__Loan_Account__c invalidStatusContract=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
-        invalidStatusContract.loan__Interest_Posted__c = 500;
-        invalidStatusContract.loan__Invalid_Data__c = false;
-        invalidStatusContract.loan__Loan_Status__c = 'Closed - Obligations met';
-        contractList.add(invalidStatusContract);
-
-        // Contract with high interest posted for clearing amount test
-        loan__Loan_Account__c highInterestContract=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
-        highInterestContract.loan__Interest_Posted__c = 100; // Low amount for clearing validation
-        highInterestContract.loan__Invalid_Data__c = false;
-        highInterestContract.loan__Loan_Status__c = 'Active - Good Standing';
-        contractList.add(highInterestContract);
 
         Database.update(contractList);
 
@@ -89,7 +70,7 @@ private class F2FPaymentFileHelperTest {
         investorLoanList.add(investorLoan);
 
         // Investor loan with difference > 1 for posting difference validation
-        loan__Investor_Loan__c investorLoan2 = F2FTestHelper.returnloanInvestor(highInterestContract);
+        loan__Investor_Loan__c investorLoan2 = F2FTestHelper.returnloanInvestor(contractObj); // Reusing contractObj for this test
         investorLoanList.add(investorLoan2);
 
         insert investorLoanList;
@@ -113,7 +94,7 @@ private class F2FPaymentFileHelperTest {
         lptList.add(lptReversalIssue);
 
         // LPT with another reversal issue pattern
-        loan__Loan_Payment_Transaction__c lptReversalIssue2 = F2FTestHelper.returnLoanPayment(invalidDataContract);
+        loan__Loan_Payment_Transaction__c lptReversalIssue2 = F2FTestHelper.returnLoanPayment(contractObj); // Reusing contractObj for this test
         lptReversalIssue2.loan__Payment_Mode__c = paymentModeList[0].Id;
         lptReversalIssue2.loan__Cleared__c = true;
         lptReversalIssue2.loan__Reversed__c = false;
@@ -296,10 +277,13 @@ private class F2FPaymentFileHelperTest {
 
     @isTest
     static void testInterestFileValidationWithInvalidDataLoan() {
-        List<loan__Loan_Account__c> invalidLoans = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = true LIMIT 1];
+        // Get the existing loan and modify it for this test
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 1];
+        loans[0].loan__Invalid_Data__c = true;
+        update loans[0];
         
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
-        loanAmountMap.put(invalidLoans[0].Name, 100.0);
+        loanAmountMap.put(loans[0].Name, 100.0);
         
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
@@ -310,15 +294,22 @@ private class F2FPaymentFileHelperTest {
         
         // Should have validation error and loan should be removed from map
         System.assert(interestHandler.errorList.size() > 0, 'Should have validation errors');
-        System.assert(!helper.loanNameVsAmountMap.containsKey(invalidLoans[0].Name), 'Invalid loan should be removed from map');
+        System.assert(!helper.loanNameVsAmountMap.containsKey(loans[0].Name), 'Invalid loan should be removed from map');
+        
+        // Reset loan for other tests
+        loans[0].loan__Invalid_Data__c = false;
+        update loans[0];
     }
 
     @isTest
     static void testInterestFileValidationWithInvalidStatusLoan() {
-        List<loan__Loan_Account__c> invalidStatusLoans = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Loan_Status__c = 'Closed - Obligations met' LIMIT 1];
+        // Get the existing loan and modify it for this test
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 1];
+        loans[0].loan__Loan_Status__c = 'Closed - Obligations met';
+        update loans[0];
         
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
-        loanAmountMap.put(invalidStatusLoans[0].Name, 100.0);
+        loanAmountMap.put(loans[0].Name, 100.0);
         
         F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
@@ -329,12 +320,19 @@ private class F2FPaymentFileHelperTest {
         
         // Should have validation error and loan should be removed from map
         System.assert(interestHandler.errorList.size() > 0, 'Should have validation errors');
-        System.assert(!helper.loanNameVsAmountMap.containsKey(invalidStatusLoans[0].Name), 'Invalid status loan should be removed from map');
+        System.assert(!helper.loanNameVsAmountMap.containsKey(loans[0].Name), 'Invalid status loan should be removed from map');
+        
+        // Reset loan for other tests
+        loans[0].loan__Loan_Status__c = 'Active - Good Standing';
+        update loans[0];
     }
 
     @isTest
     static void testInterestFileValidationWithExcessiveClearingAmount() {
-        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Interest_Posted__c = 100 LIMIT 1]; // Low interest posted loan
+        // Get the existing loan and modify it for this test
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 1];
+        loans[0].loan__Interest_Posted__c = 100; // Set low amount for clearing validation
+        update loans[0];
         
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put(loans[0].Name, 150.0); // Amount exceeds interest posted (100)
@@ -356,6 +354,10 @@ private class F2FPaymentFileHelperTest {
             }
         }
         System.assert(hasExcessiveAmountError, 'Should have specific error for excessive clearing amount');
+        
+        // Reset loan for other tests
+        loans[0].loan__Interest_Posted__c = 1000;
+        update loans[0];
     }
 
     @isTest
@@ -378,10 +380,13 @@ private class F2FPaymentFileHelperTest {
 
     @isTest
     static void testFeesFileValidationWithInvalidLoans() {
-        List<loan__Loan_Account__c> invalidLoans = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = true LIMIT 1];
+        // Get the existing loan and modify it for this test
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 1];
+        loans[0].loan__Invalid_Data__c = true;
+        update loans[0];
         
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
-        loanAmountMap.put(invalidLoans[0].Name, 100.0);
+        loanAmountMap.put(loans[0].Name, 100.0);
         
         F2FFeesPaymentFileHandler feesHandler = new F2FFeesPaymentFileHandler();
         F2FPaymentFileHelper helper = new F2FPaymentFileHelper(feesHandler, loanAmountMap);
@@ -392,7 +397,11 @@ private class F2FPaymentFileHelperTest {
         
         // Should have validation error and loan should be removed from map
         System.assert(feesHandler.errorList.size() > 0, 'Should have validation errors');
-        System.assert(!helper.loanNameVsAmountMap.containsKey(invalidLoans[0].Name), 'Invalid loan should be removed from map');
+        System.assert(!helper.loanNameVsAmountMap.containsKey(loans[0].Name), 'Invalid loan should be removed from map');
+        
+        // Reset loan for other tests
+        loans[0].loan__Invalid_Data__c = false;
+        update loans[0];
     }
 
     @isTest
@@ -508,7 +517,9 @@ private class F2FPaymentFileHelperTest {
 
     @isTest
     static void testIsClearingAmountValidWithExcessiveAmount() {
-        List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c WHERE loan__Interest_Posted__c = 100 LIMIT 1]; // Low interest posted
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c LIMIT 1];
+        loans[0].loan__Interest_Posted__c = 100; // Set low amount for this test
+        update loans[0];
         
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put(loans[0].Name, 150.0); // Amount exceeds interest posted
@@ -521,6 +532,10 @@ private class F2FPaymentFileHelperTest {
         
         System.assertEquals(false, result, 'Should return false for excessive clearing amount');
         System.assertEquals(1, interestHandler.errorCount, 'Should have one error for excessive amount');
+        
+        // Reset loan for other tests
+        loans[0].loan__Interest_Posted__c = 1000;
+        update loans[0];
     }
 
     @isTest
@@ -544,7 +559,9 @@ private class F2FPaymentFileHelperTest {
 
     @isTest
     static void testIsPostingDiffValidWithExcessiveDifference() {
-        List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c WHERE loan__Interest_Posted__c = 100 LIMIT 1]; // Interest posted = 100
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c LIMIT 1];
+        loans[0].loan__Interest_Posted__c = 100; // Set amount for this test
+        update loans[0];
         
         Map<String, Decimal> loanNameVsIOPostingMap = new Map<String, Decimal>();
         loanNameVsIOPostingMap.put(loans[0].Name, 95.0); // 5 difference, should fail (>1)
@@ -559,6 +576,10 @@ private class F2FPaymentFileHelperTest {
         
         System.assertEquals(false, result, 'Should return false for excessive posting difference');
         System.assertEquals(1, interestHandler.errorCount, 'Should have one error for excessive difference');
+        
+        // Reset loan for other tests
+        loans[0].loan__Interest_Posted__c = 1000;
+        update loans[0];
     }
 
     @isTest
