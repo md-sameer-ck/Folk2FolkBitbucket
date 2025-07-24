@@ -32,15 +32,15 @@ global class F2FPaymentFileControllerTest {
         List<Account> accountList = new List<Account>();
 
         Account borrowerAccount=F2FTestHelper.getAccount();
-        borrowerAccount.Name = 'Borrower 1';
-        borrowerAccount.clcommon__Email__c = 'borrower@mailinator.com';        
+        borrowerAccount.Name = 'Controller Test Borrower';
+        borrowerAccount.clcommon__Email__c = 'controller.borrower@mailinator.com';        
         borrowerAccount.recordTypeId = borrowerRecordType;
         borrowerAccount.clcommon__Legal_Entity_Type__c = individualLegalEntity.Id;
         accountList.add(borrowerAccount);
 
         Account investorAccount=F2FTestHelper.getAccount();
-        investorAccount.Name = 'Investor 1';
-        investorAccount.clcommon__Email__c = 'investor@mailinator.com';        
+        investorAccount.Name = 'Controller Test Investor';
+        investorAccount.clcommon__Email__c = 'controller.investor@mailinator.com';        
         investorAccount.recordTypeId = investorRecordType;
         investorAccount.clcommon__Legal_Entity_Type__c = individualLegalEntity.Id;
         accountList.add(investorAccount);
@@ -84,6 +84,7 @@ global class F2FPaymentFileControllerTest {
         apsObj.loan__Payment_Mode__c = loanPaymentModeObj.Id;
         apsObj.loan__Amount_Type__c = 'Last Billed Amount';
         apsObj.loan__Type__c = 'Recurring';
+        apsObj.loan__Frequency__c = 'Billing Frequency';
         insert apsObj;
 
         //Create LPT

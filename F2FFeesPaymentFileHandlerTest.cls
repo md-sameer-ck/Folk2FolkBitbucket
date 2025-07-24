@@ -27,15 +27,15 @@ private class F2FFeesPaymentFileHandlerTest {
         List<Account> accountList = new List<Account>();
 
         Account borrowerAccountObj=F2FTestHelper.getAccount();
-        borrowerAccountObj.Name = 'Borrower 1';
-        borrowerAccountObj.clcommon__Email__c = 'borrower@mailinator.com';        
+        borrowerAccountObj.Name = 'Fees Test Borrower';
+        borrowerAccountObj.clcommon__Email__c = 'fees.borrower@mailinator.com';        
         borrowerAccountObj.recordTypeId = borrowerRecordTypeObj;
         borrowerAccountObj.clcommon__Legal_Entity_Type__c = individualLegalEntityObj.Id;
         accountList.add(borrowerAccountObj);
 
         Account investorAccountObj=F2FTestHelper.getAccount();
-        investorAccountObj.Name = 'Investor 1';
-        investorAccountObj.clcommon__Email__c = 'investor@mailinator.com';        
+        investorAccountObj.Name = 'Fees Test Investor';
+        investorAccountObj.clcommon__Email__c = 'fees.investor@mailinator.com';        
         investorAccountObj.recordTypeId = investorRecordTypeObj;
         investorAccountObj.clcommon__Legal_Entity_Type__c = individualLegalEntityObj.Id;
         accountList.add(investorAccountObj);
