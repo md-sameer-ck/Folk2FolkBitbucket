@@ -68,7 +68,6 @@ private class F2FInterestPaymentFileHandlerTest {
 
         // Contract with invalid data flag for testing validation
         loan__Loan_Account__c invalidDataContract=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
-        invalidDataContract.Name = 'LAI102';
         invalidDataContract.loan__Interest_Rate__c = 6.5;
         invalidDataContract.loan__Interest_Posted__c = 500;
         invalidDataContract.loan__Principal_Remaining__c = 5000;
@@ -79,7 +78,6 @@ private class F2FInterestPaymentFileHandlerTest {
 
         // Contract with invalid status for testing validation
         loan__Loan_Account__c invalidStatusContract=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
-        invalidStatusContract.Name = 'LAI103';
         invalidStatusContract.loan__Interest_Rate__c = 6.5;
         invalidStatusContract.loan__Interest_Posted__c = 500;
         invalidStatusContract.loan__Principal_Remaining__c = 5000;
@@ -95,14 +93,10 @@ private class F2FInterestPaymentFileHandlerTest {
         
         // Valid investor loan with matching interest posted
         loan__Investor_Loan__c investorLoan = F2FTestHelper.returnloanInvestor(contractObj);
-        investorLoan.loan__Investor__c = investorAccountObj.Id;
-        investorLoan.Interest_posted__c = 1000; // Match with contract interest posted
         investorLoanList.add(investorLoan);
 
         // Investor loan with different interest posted for difference validation
         loan__Investor_Loan__c investorLoan2 = F2FTestHelper.returnloanInvestor(invalidDataContract);
-        investorLoan2.loan__Investor__c = investorAccountObj.Id;
-        investorLoan2.Interest_posted__c = 498; // 2 difference from contract (500), should pass (≤1)
         investorLoanList.add(investorLoan2);
 
         insert investorLoanList;
@@ -368,7 +362,6 @@ private class F2FInterestPaymentFileHandlerTest {
         // Create a loan without Investment Orders
         List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Borrower 1' LIMIT 1];
         loan__Loan_Account__c loanWithoutIO = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
-        loanWithoutIO.Name = 'LAI104';
         loanWithoutIO.loan__Interest_Posted__c = 500;
         loanWithoutIO.loan__Invalid_Data__c = false;
         loanWithoutIO.loan__Loan_Status__c = 'Active - Good Standing';

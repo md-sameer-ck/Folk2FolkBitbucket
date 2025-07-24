@@ -63,7 +63,6 @@ private class F2FFeesPaymentFileHandlerTest {
 
         // Contract with invalid data flag for testing validation
         loan__Loan_Account__c invalidDataContract=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
-        invalidDataContract.Name = 'LAI102';
         invalidDataContract.loan__Interest_Rate__c = 6.5;
         invalidDataContract.loan__Principal_Remaining__c = 5000;
         invalidDataContract.loan__Loan_Amount__c = 5000;
@@ -73,7 +72,6 @@ private class F2FFeesPaymentFileHandlerTest {
 
         // Contract with invalid status for testing validation
         loan__Loan_Account__c invalidStatusContract=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
-        invalidStatusContract.Name = 'LAI103';
         invalidStatusContract.loan__Interest_Rate__c = 6.5;
         invalidStatusContract.loan__Principal_Remaining__c = 5000;
         invalidStatusContract.loan__Loan_Amount__c = 5000;

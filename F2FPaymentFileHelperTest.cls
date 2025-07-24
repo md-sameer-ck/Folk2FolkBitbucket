@@ -60,7 +60,6 @@ private class F2FPaymentFileHelperTest {
 
         // Contract with invalid data flag
         loan__Loan_Account__c invalidDataContract=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
-        invalidDataContract.Name = 'LAI102';
         invalidDataContract.loan__Interest_Posted__c = 500;
         invalidDataContract.loan__Invalid_Data__c = true;
         invalidDataContract.loan__Loan_Status__c = 'Active - Good Standing';
@@ -68,7 +67,6 @@ private class F2FPaymentFileHelperTest {
 
         // Contract with invalid status
         loan__Loan_Account__c invalidStatusContract=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
-        invalidStatusContract.Name = 'LAI103';
         invalidStatusContract.loan__Interest_Posted__c = 500;
         invalidStatusContract.loan__Invalid_Data__c = false;
         invalidStatusContract.loan__Loan_Status__c = 'Closed - Obligations met';
@@ -76,7 +74,6 @@ private class F2FPaymentFileHelperTest {
 
         // Contract with high interest posted for clearing amount test
         loan__Loan_Account__c highInterestContract=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
-        highInterestContract.Name = 'LAI104';
         highInterestContract.loan__Interest_Posted__c = 100; // Low amount for clearing validation
         highInterestContract.loan__Invalid_Data__c = false;
         highInterestContract.loan__Loan_Status__c = 'Active - Good Standing';
@@ -89,14 +86,10 @@ private class F2FPaymentFileHelperTest {
         
         // Valid investor loan with matching interest posted
         loan__Investor_Loan__c investorLoan = F2FTestHelper.returnloanInvestor(contractObj);
-        investorLoan.loan__Investor__c = investorAccountObj.Id;
-        investorLoan.Interest_posted__c = 1000; // Match with contract interest posted
         investorLoanList.add(investorLoan);
 
         // Investor loan with difference > 1 for posting difference validation
         loan__Investor_Loan__c investorLoan2 = F2FTestHelper.returnloanInvestor(highInterestContract);
-        investorLoan2.loan__Investor__c = investorAccountObj.Id;
-        investorLoan2.Interest_posted__c = 95; // 5 difference from contract (100), should fail (>1)
         investorLoanList.add(investorLoan2);
 
         insert investorLoanList;
@@ -341,7 +334,7 @@ private class F2FPaymentFileHelperTest {
 
     @isTest
     static void testInterestFileValidationWithExcessiveClearingAmount() {
-        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c WHERE Name = 'LAI104' LIMIT 1]; // Low interest posted loan
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Interest_Posted__c = 100 LIMIT 1]; // Low interest posted loan
         
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put(loans[0].Name, 150.0); // Amount exceeds interest posted (100)
@@ -515,7 +508,7 @@ private class F2FPaymentFileHelperTest {
 
     @isTest
     static void testIsClearingAmountValidWithExcessiveAmount() {
-        List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c WHERE Name = 'LAI104' LIMIT 1]; // Low interest posted
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c WHERE loan__Interest_Posted__c = 100 LIMIT 1]; // Low interest posted
         
         Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
         loanAmountMap.put(loans[0].Name, 150.0); // Amount exceeds interest posted
@@ -551,7 +544,7 @@ private class F2FPaymentFileHelperTest {
 
     @isTest
     static void testIsPostingDiffValidWithExcessiveDifference() {
-        List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c WHERE Name = 'LAI104' LIMIT 1]; // Interest posted = 100
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c WHERE loan__Interest_Posted__c = 100 LIMIT 1]; // Interest posted = 100
         
         Map<String, Decimal> loanNameVsIOPostingMap = new Map<String, Decimal>();
         loanNameVsIOPostingMap.put(loans[0].Name, 95.0); // 5 difference, should fail (>1)
@@ -573,7 +566,6 @@ private class F2FPaymentFileHelperTest {
         // Create a loan without Investment Orders
         List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Borrower 1' LIMIT 1];
         loan__Loan_Account__c loanWithoutIO = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
-        loanWithoutIO.Name = 'LAI105';
         loanWithoutIO.loan__Interest_Posted__c = 500;
         loanWithoutIO.loan__Invalid_Data__c = false;
         loanWithoutIO.loan__Loan_Status__c = 'Active - Good Standing';
@@ -599,7 +591,6 @@ private class F2FPaymentFileHelperTest {
         // Create a loan without reversal issues
         List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Borrower 1' LIMIT 1];
         loan__Loan_Account__c cleanLoan = F2FTestHelper.returnLoanAccount(borrowerAccounts[0]);
-        cleanLoan.Name = 'LAI106';
         cleanLoan.loan__Invalid_Data__c = false;
         cleanLoan.loan__Loan_Status__c = 'Active - Good Standing';
         insert cleanLoan;

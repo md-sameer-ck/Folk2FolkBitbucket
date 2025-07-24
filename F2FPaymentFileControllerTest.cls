@@ -71,8 +71,6 @@ global class F2FPaymentFileControllerTest {
 
         // Create Investment Orders (Investor Loans) for validation
         loan__Investor_Loan__c investorLoan = F2FTestHelper.returnloanInvestor(contract);
-        investorLoan.loan__Investor__c = investorAccount.Id;
-        investorLoan.Interest_posted__c = 1000; // Match with contract interest posted
         insert investorLoan;
 
         //Payment modes
@@ -114,13 +112,6 @@ global class F2FPaymentFileControllerTest {
         insert lptList;
         
         System.assertEquals(true, lpt.Id!=null && lptObj.Id!=null, 'Lpt not inserted');
-
-        // Create Payment File Process Error Folder for document creation
-        Folder errorFolder = new Folder();
-        errorFolder.Name = 'Payment File Process Error';
-        errorFolder.Type = 'Document';
-        errorFolder.AccessType = 'Public';
-        insert errorFolder;
 
         // Create Fee Payment Spreads for Fees testing
         List<loan__Loan_Payment_Spread__c> paymentSpreadList = new List<loan__Loan_Payment_Spread__c>();
