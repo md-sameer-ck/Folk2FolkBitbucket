@@ -289,6 +289,12 @@ public inherited sharing class F2FPaymentFileHelper {
     * @return True if posting difference is valid, false otherwise
     **/
     public Boolean isPostingDiffValid(loan__Loan_Account__c loanObj, Map<String, Decimal> loanNameVsIOPostingMap) {
+        if (loanObj == null || loanNameVsIOPostingMap == null) {
+            handlerUtilInst.incrementErrorCount(currentFileInstance);
+            handlerUtilInst.addErrorToList(currentFileInstance, handlerUtilInst.getErrorListSize(currentFileInstance) +
+                Folk2FolkConstantValues.TEXT_IN_COMMMA + 'Null argument provided to isPostingDiffValid.' + Folk2FolkConstantValues.NEXT_LINE);
+            return false;
+        }
         // Check if loan has any Investment Order interest postings
         if (!loanNameVsIOPostingMap.containsKey(loanObj.Name)) {
             handlerUtilInst.incrementErrorCount(currentFileInstance);

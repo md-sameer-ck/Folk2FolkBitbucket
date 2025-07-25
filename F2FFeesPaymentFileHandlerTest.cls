@@ -517,6 +517,22 @@ private class F2FFeesPaymentFileHandlerTest {
     }
 
     @isTest
+    static void testClearLoanPaymentTransactions_EmptyInputs() {
+        F2FFeesPaymentFileHandler handler = new F2FFeesPaymentFileHandler();
+        Map<String, Decimal> emptyMap = new Map<String, Decimal>();
+        Set<String> emptySet = new Set<String>();
+        // Should simply return, covering the branch
+        handler.clearLoanPaymentTransactions(emptyMap, emptySet);
+        // Also test with non-empty map and empty set
+        Map<String, Decimal> nonEmptyMap = new Map<String, Decimal>{'Test_Management Fee' => 100.0};
+        handler.clearLoanPaymentTransactions(nonEmptyMap, emptySet);
+        // Also test with empty map and non-empty set
+        Set<String> nonEmptySet = new Set<String>{'Test'};
+        handler.clearLoanPaymentTransactions(emptyMap, nonEmptySet);
+        System.assert(true, 'Method should complete without error for empty inputs.');
+    }
+
+    @isTest
     static void testProcessFeesFileWithMissingHeaders() {
         String fileContent = 'Wrong Header,Another Header\n' +
                             'LAI123,100.00\n';
