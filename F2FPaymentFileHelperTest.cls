@@ -1,415 +1,852 @@
 /**
- * @description                : This class is a helper for processing F2F payment files,
- *                               specifically for interest and fees payments with comprehensive validation.
+ * @description                : Test class for F2FPaymentFileHelper
  * @author                     : Md Sameer
- * @group                      : Helper Class
- * @last modified on           : 17-07-2025
+ * @group                      : Test Class
+ * @last modified on           : 25-07-2025
  * @last modified by           : Md Sameer
  * @last modification details  :
  * Modifications Log
- * Ver   Date         Author      Modification
- * 1.0   10-07-2025   Md Sameer   Initial Version
- * 1.1   16-07-2025   Md Sameer   Added optimizations and bug fixes
+ * Ver   Date         Author                Modification
+ * 1.0   17-07-2025   Md Sameer            Initial Version
 **/
-public inherited sharing class F2FPaymentFileHelper {
+@isTest
+private class F2FPaymentFileHelperTest {
 
-    // Instance variables for payment file handlers
-    public Object currentFileInstance;
-    public Map<String, Decimal> loanNameVsAmountMap;
-    public HandlerUtils handlerUtilInst;
+    static Date currentDate = System.today();
 
-    /**
-    * @description Initializes the helper with the appropriate payment file handler based on the identifier.
-    *               Validates input parameters and sets up the correct handler instance.
-    * @author Md Sameer | 11-07-2025
-    * @param callerInst The handler instance (Interest or Fees payment handler)
-    * @param loanNameVsAmountMap Map containing loan names and their corresponding amounts
-    **/
-    public F2FPaymentFileHelper(Object callerInst, Map<String, Decimal> loanNameVsAmountMap) {
-        // Validate input parameters to ensure they are not null
-        ValidationUtil.throwErrorOnCondition(callerInst == null || loanNameVsAmountMap == null,
-            'Params provided for F2FPaymentFileHelper instantiation are null'
-        );
-        ValidationUtil.throwErrorOnCondition((!(callerInst instanceof F2FInterestPaymentFileHandler)
-            && !(callerInst instanceof F2FFeesPaymentFileHandler)),
-            'Invalid payment file handler instance provided.');
+    @testsetup
+    static void testsetup(){
+        //account record types
+        Id borrowerRecordTypeObj = Schema.SObjectType.account.getRecordTypeInfosByName().get('Borrower').getRecordTypeId();
+        Id investorRecordTypeObj = Schema.SObjectType.account.getRecordTypeInfosByName().get('Investor').getRecordTypeId();
 
-        // Initialize the handler utility instance for error handling
-        this.handlerUtilInst = new HandlerUtils();
-        // Initialize the class current file instance from the caller instance
-        this.currentFileInstance = callerInst;
-        // Store the loan name to amount mapping for validation processing
-        this.loanNameVsAmountMap = loanNameVsAmountMap;
+        //legal entity
+        clcommon__Legal_Entity__c individualLegalEntity = F2FTestHelper.getLegalEntity('Individual');
+        insert individualLegalEntity;
+
+        // Creating accounts
+        List<Account> accountList = new List<Account>();
+
+        Account borrowerAccountObj=F2FTestHelper.getAccount();
+        borrowerAccountObj.Name = 'Helper Test Borrower';
+        borrowerAccountObj.clcommon__Email__c = 'helper.borrower@mailinator.com';
+        borrowerAccountObj.recordTypeId = borrowerRecordTypeObj;
+        borrowerAccountObj.clcommon__Legal_Entity_Type__c = individualLegalEntity.Id;
+        accountList.add(borrowerAccountObj);
+
+        Account investorAccountObj=F2FTestHelper.getAccount();
+        investorAccountObj.Name = 'Helper Test Investor';
+        investorAccountObj.clcommon__Email__c = 'helper.investor@mailinator.com';
+        investorAccountObj.recordTypeId = investorRecordTypeObj;
+        investorAccountObj.clcommon__Legal_Entity_Type__c = individualLegalEntity.Id;
+        investorAccountObj.loan__Investor__c = true;
+        investorAccountObj.Are_you_a_UK_tax_resident__c = true;
+        accountList.add(investorAccountObj);
+
+        if(accountList!=null && accountList.size()>0){
+            insert accountList;
+        }
+
+        // Create contracts with different scenarios
+        List<loan__Loan_Account__c> contractList = new List<loan__Loan_Account__c>();
+
+        // Single valid contract for testing - will be modified in individual test methods as needed
+        loan__Loan_Account__c contractObj=F2FTestHelper.returnLoanAccount(borrowerAccountObj);
+        contractObj.loan__Interest_Rate__c = 6.5;
+        contractObj.loan__Interest_Posted__c = 1000;
+        contractObj.loan__Principal_Remaining__c = 10000;
+        contractObj.loan__Loan_Amount__c = 10000;
+        contractObj.loan__Invalid_Data__c = false;
+        contractObj.loan__Loan_Status__c = 'Active - Good Standing';
+        contractList.add(contractObj);
+
+        Database.update(contractList);
+
+        // Create Investment Orders (Investor Loans) for validation
+        List<loan__Investor_Loan__c> investorLoanList = new List<loan__Investor_Loan__c>();
+
+        // Valid investor loan with matching interest posted
+        loan__Investor_Loan__c investorLoan = F2FTestHelper.returnloanInvestor(contractObj);
+        investorLoanList.add(investorLoan);
+
+        // Investor loan with difference > 1 for posting difference validation
+        loan__Investor_Loan__c investorLoan2 = F2FTestHelper.returnloanInvestor(contractObj); // Reusing contractObj for this test
+        investorLoanList.add(investorLoan2);
+
+        insert investorLoanList;
+
+        // Create LPTs for reversal issue testing
+        List<loan__Payment_Mode__c> paymentModeList = new List<loan__Payment_Mode__c>();
+        loan__Payment_Mode__c paymentModeObj = F2FTestHelper.getPaymentMode();
+        paymentModeList.add(paymentModeObj);
+        Database.insert(paymentModeList);
+
+        List<loan__Loan_Payment_Transaction__c> lptList = new List<loan__Loan_Payment_Transaction__c>();
+
+        // LPT with reversal issue - cleared=true, reversed=true, paid_to_investor=true, but paid_to_investor_reversed=false
+        loan__Loan_Payment_Transaction__c lptReversalIssue = F2FTestHelper.returnLoanPayment(contractObj);
+        lptReversalIssue.loan__Payment_Mode__c = paymentModeList[0].Id;
+        lptReversalIssue.loan__Cleared__c = true;
+        lptReversalIssue.loan__Reversed__c = true;
+        lptReversalIssue.loan__Rejected__c = false;
+        lptReversalIssue.loan__Paid_to_Investor__c = true;
+        lptReversalIssue.loan__Paid_to_Investor_Reversed__c = false; // Should be true for proper reversal
+        lptList.add(lptReversalIssue);
+
+        // LPT with another reversal issue pattern
+        loan__Loan_Payment_Transaction__c lptReversalIssue2 = F2FTestHelper.returnLoanPayment(contractObj); // Reusing contractObj for this test
+        lptReversalIssue2.loan__Payment_Mode__c = paymentModeList[0].Id;
+        lptReversalIssue2.loan__Cleared__c = true;
+        lptReversalIssue2.loan__Reversed__c = false;
+        lptReversalIssue2.loan__Rejected__c = false;
+        lptReversalIssue2.loan__Paid_to_Investor__c = false; // Should be true when cleared
+        lptList.add(lptReversalIssue2);
+
+        insert lptList;
     }
 
-    /**
-    * @description Retrieves loan account details for the given set of loan names.
-    *               Uses SOQL to fetch essential loan information needed for validation.
-    * @author Md Sameer | 15-07-2025
-    * @param loanNameSet Set of loan names to query
-    * @return Map of loan names to their corresponding loan account objects
-    **/
-    public Map<String, loan__Loan_Account__c> getLoanDetails(Set<String> loanNameSet) {
-        Map<String, loan__Loan_Account__c> resultMap = new Map<String, loan__Loan_Account__c>();
+    @isTest
+    static void testConstructorWithValidInterestHandler() {
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        loanAmountMap.put('LAI101', 100.0);
 
-        // Query loan accounts with essential fields needed for validation
-        for (loan__Loan_Account__c eachLoanObj :
-                [SELECT Id,
-                        Name,
-                        loan__Invalid_Data__c,
-                        loan__Loan_Status__c,
-                        loan__Interest_Posted__c
-                    FROM loan__Loan_Account__c
-                    WHERE Name IN: loanNameSet
-                    WITH SYSTEM_MODE]) {
-            resultMap.put(eachLoanObj.Name, eachLoanObj);
-        }
-        return resultMap;
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+
+        Test.startTest();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+        Test.stopTest();
+
+        System.assertNotEquals(null, helper, 'Helper should be instantiated');
+        System.assertNotEquals(null, helper.handlerUtilInst, 'Handler util should be instantiated');
     }
 
-    /**
-    * @description Calculates the sum of interest postings for loans from Investment Orders.
-    *               Uses aggregate query for efficient calculation of posting sums.
-    * @author Md Sameer | 15-07-2025
-    * @param loanNameSet Set of loan names to calculate postings for
-    * @param loanNameVsLoanObjMap Map of loan names to their corresponding loan objects
-    * @return Map of loan names to their total interest posting amounts
-    **/
-    public Map<String, Decimal> getIOPostingSum(Set<String> loanNameSet,
-            Map<String, loan__Loan_Account__c> loanNameVsLoanObjMap) {
-        Map<String, Decimal> resultMap = new Map<String, Decimal>();
+    @isTest
+    static void testConstructorWithValidFeesHandler() {
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        loanAmountMap.put('LAI101', 100.0);
 
-        // Create temporary map to hold loan id vs loan names as aggr returns id vs value
-        Map<Id, String> loanIdVsNameMap = new Map<Id, String>();
-        for (String eachLoan : loanNameVsLoanObjMap.keySet()) {
-            loanIdVsNameMap.put(loanNameVsLoanObjMap.get(eachLoan).Id, eachLoan);
-        }
+        F2FFeesPaymentFileHandler feesHandler = new F2FFeesPaymentFileHandler();
 
-        // Use aggregate query to efficiently sum interest postings by loan
-        for (AggregateResult eachAggResult : [
-            SELECT loan__Loan__r.Id loanAcccId,
-                SUM(Interest_posted__c) interestPostingSum
-                FROM loan__Investor_Loan__c
-                WHERE loan__Loan__r.Name IN :loanNameSet
-                WITH SYSTEM_MODE
-                GROUP BY loan__Loan__r.Id
-        ]) {
-            resultMap.put(
-                loanIdVsNameMap.get((Id)eachAggResult.get('loanAcccId')),
-                (Decimal)eachAggResult.get('interestPostingSum')
-            );
-        }
-        return resultMap;
+        Test.startTest();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(feesHandler, loanAmountMap);
+        Test.stopTest();
+
+        System.assertNotEquals(null, helper, 'Helper should be instantiated');
+        System.assertNotEquals(null, helper.handlerUtilInst, 'Handler util should be instantiated');
     }
 
-    /**
-    * @description Identifies loans that have reversal issues in their payment transactions.
-    *               Checks for inconsistent states in cleared, reversed, and paid to investor flags.
-    * @author Md Sameer | 15-07-2025
-    * @param loanNameSet Set of loan names to check for reversal issues
-    * @return Set of loan names that have reversal issues
-    **/
-    public Set<String> getReversalIssueLoanMap(Set<String> loanNameSet) {
-        Set<String> resultSet = new Set<String>();
+    @isTest
+    static void testConstructorWithNullHandler() {
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        loanAmountMap.put('LAI101', 100.0);
 
-        // Query for loan payment transactions with potential reversal issues
-        for (loan__Loan_Payment_Transaction__c eachLoanPaymentTrans :
-                [SELECT loan__Loan_Account__r.Name
-                    FROM loan__Loan_Payment_Transaction__c
-                    WHERE ((loan__Cleared__c = true
-                        AND loan__Reversed__c = false
-                        AND loan__Rejected__c = false
-                        AND loan__Paid_to_Investor__c != true)
-                    OR
-                        (loan__Cleared__c = true
-                        AND loan__Reversed__c = true
-                        AND loan__Paid_to_Investor__c != false
-                        AND loan__Paid_to_Investor_Reversed__c != true))
-                    AND loan__Loan_Account__r.Name IN :loanNameSet
-                    WITH SYSTEM_MODE]) {
-            resultSet.add(eachLoanPaymentTrans.loan__Loan_Account__r.Name);
+        Test.startTest();
+        try {
+            F2FPaymentFileHelper helper = new F2FPaymentFileHelper(null, loanAmountMap);
+            System.assert(false, 'Should throw exception for null handler');
+        } catch (Exception e) {
+            System.assert(e.getMessage().contains('null'), 'Should throw validation error for null params');
         }
-        return resultSet;
+        Test.stopTest();
     }
 
-    /**
-    * @description Performs comprehensive validation for interest payment files.
-    *               Validates loan existence, status, data integrity, and posting amounts.
-    * @author Md Sameer | 11-07-2025
-    **/
-    public void interestFileValidation() {
-        if (loanNameVsAmountMap.isEmpty()) {
-            return; // No loans to validate, exit early
+    @isTest
+    static void testConstructorWithNullLoanMap() {
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+
+        Test.startTest();
+        try {
+            F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, null);
+            System.assert(false, 'Should throw exception for null loan map');
+        } catch (Exception e) {
+            System.assert(e.getMessage().contains('null'), 'Should throw validation error for null params');
         }
-        loan__Loan_Account__c loanObj;
-        // Cache the loan name set to avoid multiple keySet() calls
-        Set<String> loanNameSet = new Set<String>(loanNameVsAmountMap.keySet());
+        Test.stopTest();
+    }
 
-        // Fetch all required data for validation in bulk to optimize performance
-        Map<String, loan__Loan_Account__c> loanNameVsLoanObjMap = getLoanDetails(loanNameSet);
-        Map<String, Decimal> loanNameVsIOPostingMap = getIOPostingSum(loanNameSet, loanNameVsLoanObjMap);
-        Set<String> reversalIssueLoanSet = getReversalIssueLoanMap(loanNameSet);
+    @isTest
+    static void testConstructorWithInvalidHandler() {
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        loanAmountMap.put('LAI101', 100.0);
 
-        // Validate each loan against all required criteria
-        for (String eachLoanName : loanNameSet) {
-            loanObj = loanNameVsLoanObjMap.get(eachLoanName);
-            // Run all validations and remove loan from processing if any validation fails
-            if (!(
-                isLoanNameValid(eachLoanName, loanObj) &&
-                isLoanNotInvalidData(loanObj) &&
-                isLoanStatusValid(loanObj) &&
-                isClearingAmountValid(loanObj) &&
-                isPostingDiffValid(loanObj, loanNameVsIOPostingMap) &&
-                isNoReversalLPTIssue(loanObj, reversalIssueLoanSet)
-            )) {
-                // Remove invalid loans from processing
-                loanNameVsAmountMap.remove(eachLoanName);
+        String invalidHandler = 'Invalid Handler';
+
+        Test.startTest();
+        try {
+            F2FPaymentFileHelper helper = new F2FPaymentFileHelper(invalidHandler, loanAmountMap);
+            System.assert(false, 'Should throw exception for invalid handler');
+        } catch (Exception e) {
+            System.assert(e.getMessage().contains('Invalid payment file handler'), 'Should throw validation error for invalid handler');
+        }
+        Test.stopTest();
+    }
+
+    @isTest
+    static void testGetLoanDetails() {
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 2];
+        Set<String> loanNameSet = new Set<String>();
+        for(loan__Loan_Account__c loan : loans) {
+            loanNameSet.add(loan.Name);
+        }
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        loanAmountMap.put('LAI101', 100.0);
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        Map<String, loan__Loan_Account__c> result = helper.getLoanDetails(loanNameSet);
+        Test.stopTest();
+
+        System.assert(result.size() > 0, 'Should return loan details');
+        for(String loanName : loanNameSet) {
+            if(result.containsKey(loanName)) {
+                System.assertNotEquals(null, result.get(loanName), 'Loan details should not be null');
             }
         }
-        // Display error message if validation errors were found
-        showErrorMessage(F2FPaymentFileController.INTEREST_KEYWORD);
     }
 
-    /**
-    * @description Performs validation for fees payment files.
-    *               Validates basic loan criteria like existence, status, and data integrity.
-    * @author Md Sameer | 11-07-2025
-    **/
-    public void feesFileValidation() {
-        if (loanNameVsAmountMap.isEmpty()) {
-            return; // No loans to validate, exit early
+    @isTest
+    static void testGetIOPostingSum() {
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = false LIMIT 1];
+
+        if(loans.size() == 0) {
+            System.debug('No loans available for testing');
+            return;
         }
-        loan__Loan_Account__c loanObj;
-        // Cache the loan name set to avoid multiple keySet() calls
-        Set<String> loanNameSet = new Set<String>(loanNameVsAmountMap.keySet());
 
-        // Fetch loan details for validation
-        Map<String, loan__Loan_Account__c> loanNameVsLoanObjMap = getLoanDetails(loanNameSet);
+        Set<String> loanNameSet = new Set<String>();
+        Map<String, loan__Loan_Account__c> loanNameVsLoanObjMap = new Map<String, loan__Loan_Account__c>();
 
-        // Validate each loan against all required criteria
-        for (String eachLoanName : loanNameSet) {
-            loanObj = loanNameVsLoanObjMap.get(eachLoanName);
-            // Run all validations and remove loan from processing if any validation fails
-            if (!(
-                isLoanNameValid(eachLoanName, loanObj) &&
-                isLoanNotInvalidData(loanObj) &&
-                isLoanStatusValid(loanObj)
-                // Additional conditions can be added here as needed for fees validation
-            )) {
-                // Remove invalid loans from processing
-                loanNameVsAmountMap.remove(eachLoanName);
+        for(loan__Loan_Account__c loan : loans) {
+            loanNameSet.add(loan.Name);
+            loanNameVsLoanObjMap.put(loan.Name, loan);
+        }
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        loanAmountMap.put('LAI101', 100.0);
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        Map<String, Decimal> result = helper.getIOPostingSum(loanNameSet, loanNameVsLoanObjMap);
+        Test.stopTest();
+
+        System.assertNotEquals(null, result, 'Result should not be null');
+        // Should have posting sums for loans with Investment Orders - handle null values properly
+        for(String loanName : loanNameSet) {
+            if(result.containsKey(loanName) && result.get(loanName) != null) {
+                System.assert(result.get(loanName) >= 0, 'Posting sum should be non-negative when present');
+            } else {
+                System.debug('No posting sum found for loan: ' + loanName);
+            }
+        }
+    }
+
+    @isTest
+    static void testGetReversalIssueLoanMap() {
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 2];
+        Set<String> loanNameSet = new Set<String>();
+        for(loan__Loan_Account__c loan : loans) {
+            loanNameSet.add(loan.Name);
+        }
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        loanAmountMap.put('LAI101', 100.0);
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        Set<String> result = helper.getReversalIssueLoanMap(loanNameSet);
+        Test.stopTest();
+
+        System.assertNotEquals(null, result, 'Result should not be null');
+        // Should identify loans with reversal issues
+        System.assert(result.size() > 0, 'Should find loans with reversal issues');
+    }
+
+    @isTest
+    static void testInterestFileValidationWithValidLoans() {
+        List<loan__Loan_Account__c> validLoans = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = false AND loan__Loan_Status__c = 'Active - Good Standing' LIMIT 1];
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        loanAmountMap.put(validLoans[0].Name, 100.0); // Small amount that won't exceed interest posted
+
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        helper.interestFileValidation();
+        Test.stopTest();
+
+        // Should have some validation errors due to reversal issues, but loan should remain in map for basic validations
+        System.assert(interestHandler.errorList.size() > 0, 'Should have validation errors due to test data setup');
+    }
+
+    @isTest
+    static void testInterestFileValidationWithInvalidDataLoan() {
+        // Get the existing loan and modify it for this test
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 1];
+        loans[0].loan__Invalid_Data__c = true;
+        update loans[0];
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        loanAmountMap.put(loans[0].Name, 100.0);
+
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        helper.interestFileValidation();
+        Test.stopTest();
+
+        // Should have validation error and loan should be removed from map
+        System.assert(interestHandler.errorList.size() > 0, 'Should have validation errors');
+        System.assert(!helper.loanNameVsAmountMap.containsKey(loans[0].Name), 'Invalid loan should be removed from map');
+
+        // Reset loan for other tests
+        loans[0].loan__Invalid_Data__c = false;
+        update loans[0];
+    }
+
+    @isTest
+    static void testInterestFileValidationWithInvalidStatusLoan() {
+        // Get the existing loan and modify it for this test
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 1];
+        loans[0].loan__Loan_Status__c = 'Closed - Obligations met';
+        update loans[0];
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        loanAmountMap.put(loans[0].Name, 100.0);
+
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        helper.interestFileValidation();
+        Test.stopTest();
+
+        // Should have validation error and loan should be removed from map
+        System.assert(interestHandler.errorList.size() > 0, 'Should have validation errors');
+        System.assert(!helper.loanNameVsAmountMap.containsKey(loans[0].Name), 'Invalid status loan should be removed from map');
+
+        // Reset loan for other tests
+        loans[0].loan__Loan_Status__c = 'Active - Good Standing';
+        update loans[0];
+    }
+
+    @isTest
+    static void testInterestFileValidationWithExcessiveClearingAmount() {
+        // Get the existing loan and modify it for this test
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 1];
+        loans[0].loan__Interest_Posted__c = 100; // Set low amount for clearing validation
+        update loans[0];
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        loanAmountMap.put(loans[0].Name, 150.0); // Amount exceeds interest posted (100)
+
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        helper.interestFileValidation();
+        Test.stopTest();
+
+        // Should have validation error for excessive clearing amount
+        System.assert(interestHandler.errorList.size() > 0, 'Should have validation errors');
+        Boolean hasExcessiveAmountError = false;
+        for(String error : interestHandler.errorList) {
+            if(error.contains('clearing amount on the file') && error.contains('negative interest postings')) {
+                hasExcessiveAmountError = true;
+                break;
+            }
+        }
+        System.assert(hasExcessiveAmountError, 'Should have specific error for excessive clearing amount');
+
+        // Reset loan for other tests
+        loans[0].loan__Interest_Posted__c = 1000;
+        update loans[0];
+    }
+
+    @isTest
+    static void testFeesFileValidationWithValidLoans() {
+        List<loan__Loan_Account__c> validLoans = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = false AND loan__Loan_Status__c = 'Active - Good Standing' LIMIT 1];
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        loanAmountMap.put(validLoans[0].Name, 100.0);
+
+        F2FFeesPaymentFileHandler feesHandler = new F2FFeesPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(feesHandler, loanAmountMap);
+
+        Test.startTest();
+        helper.feesFileValidation();
+        Test.stopTest();
+
+        // Should pass basic validations for fees (no Investment Order validation for fees)
+        System.assert(helper.loanNameVsAmountMap.containsKey(validLoans[0].Name), 'Valid loan should remain in map');
+    }
+
+    @isTest
+    static void testFeesFileValidationWithInvalidLoans() {
+        // Get the existing loan and modify it for this test
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 1];
+        loans[0].loan__Invalid_Data__c = true;
+        update loans[0];
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        loanAmountMap.put(loans[0].Name, 100.0);
+
+        F2FFeesPaymentFileHandler feesHandler = new F2FFeesPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(feesHandler, loanAmountMap);
+
+        Test.startTest();
+        helper.feesFileValidation();
+        Test.stopTest();
+
+        // Should have validation error and loan should be removed from map
+        System.assert(feesHandler.errorList.size() > 0, 'Should have validation errors');
+        System.assert(!helper.loanNameVsAmountMap.containsKey(loans[0].Name), 'Invalid loan should be removed from map');
+
+        // Reset loan for other tests
+        loans[0].loan__Invalid_Data__c = false;
+        update loans[0];
+    }
+
+    @isTest
+    static void testIsLoanNameValidWithValidLoan() {
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c LIMIT 1];
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        Boolean result = helper.isLoanNameValid(loans[0].Name, loans[0]);
+        Test.stopTest();
+
+        System.assertEquals(true, result, 'Should return true for valid loan');
+        System.assertEquals(0, interestHandler.errorCount, 'Should not have errors for valid loan');
+    }
+
+    @isTest
+    static void testIsLoanNameValidWithNullLoan() {
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        Boolean result = helper.isLoanNameValid('NonExistentLoan', null);
+        Test.stopTest();
+
+        System.assertEquals(false, result, 'Should return false for null loan');
+        System.assertEquals(1, interestHandler.errorCount, 'Should have one error for null loan');
+    }
+
+    @isTest
+    static void testIsLoanNotInvalidDataWithInvalidLoan() {
+        // First check if we have any loans with invalid data
+        List<loan__Loan_Account__c> invalidLoans = [SELECT Id, Name, loan__Invalid_Data__c
+                                                    FROM loan__Loan_Account__c
+                                                    WHERE loan__Invalid_Data__c = true
+                                                    LIMIT 1];
+
+        // If no invalid loans exist, create one for testing
+        if(invalidLoans.size() == 0) {
+            List<loan__Loan_Account__c> validLoans = [SELECT Id, Name, loan__Invalid_Data__c
+                                                    FROM loan__Loan_Account__c
+                                                    LIMIT 1];
+            if(validLoans.size() > 0) {
+                validLoans[0].loan__Invalid_Data__c = true;
+                update validLoans[0];
+                invalidLoans = validLoans;
+            } else {
+                System.debug('No loans available for testing');
+                return;
             }
         }
 
-        // Display error message if validation errors were found
-        showErrorMessage(F2FPaymentFileController.FEE_KEYWORD);
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        Boolean result = helper.isLoanNotInvalidData(invalidLoans[0]);
+        Test.stopTest();
+
+        System.assertEquals(false, result, 'Should return false for loan with invalid data flag');
+        System.assertEquals(1, interestHandler.errorCount, 'Should have one error for invalid loan');
+
+        // Reset the loan if we modified it
+        invalidLoans[0].loan__Invalid_Data__c = false;
+        update invalidLoans[0];
     }
 
-    /**
-    * @description Validates if a loan name exists in the system.
-    *               Adds error message if loan is not found.
-    * @author Md Sameer | 15-07-2025
-    * @param eachLoanName The loan name to validate
-    * @param loanObj Contains the loan object to validate against
-    * @return True if loan data is valid, false otherwise
-    **/
-    public Boolean isLoanNameValid(String eachLoanName, loan__Loan_Account__c loanObj) {
-        if (loanObj == null) {
-            handlerUtilInst.incrementErrorCount(currentFileInstance);
-            handlerUtilInst.addErrorToList(currentFileInstance, handlerUtilInst.getErrorListSize(currentFileInstance) +
-                Folk2FolkConstantValues.TEXT_IN_COMMMA + 'The entered ' + eachLoanName +
-                ' could not be found in the org.' + Folk2FolkConstantValues.NEXT_LINE);
-            return false;
-        }
-        return true;
+    @isTest
+    static void testIsLoanStatusValidWithValidStatus() {
+        List<loan__Loan_Account__c> validLoans = [SELECT Id, Name, loan__Loan_Status__c FROM loan__Loan_Account__c WHERE loan__Loan_Status__c = 'Active - Good Standing' LIMIT 1];
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        Boolean result = helper.isLoanStatusValid(validLoans[0]);
+        Test.stopTest();
+
+        System.assertEquals(true, result, 'Should return true for valid loan status');
+        System.assertEquals(0, interestHandler.errorCount, 'Should not have errors for valid status');
     }
 
-    /**
-    * @description Validates that a loan does not have invalid data flag set.
-    *               Adds error message if loan has invalid data.
-    * @author Md Sameer | 16-07-2025
-    * @param loanObj Contains the loan object to validate against
-    * @return True if loan data is valid, false otherwise
-    **/
-    public Boolean isLoanNotInvalidData(loan__Loan_Account__c loanObj) {
-        if (loanObj.loan__Invalid_Data__c) {
-            handlerUtilInst.incrementErrorCount(currentFileInstance);
-            handlerUtilInst.addErrorToList(currentFileInstance, handlerUtilInst.getErrorListSize(currentFileInstance) +
-                Folk2FolkConstantValues.TEXT_IN_COMMMA + 'The loan ' + loanObj.Name +
-                ' has invalid data true.' + Folk2FolkConstantValues.NEXT_LINE);
-            return false;
-        }
-        return true;
-    }
+    @isTest
+    static void testIsLoanStatusValidWithInvalidStatus() {
+        // First try to find an existing loan with invalid status
+        List<loan__Loan_Account__c> invalidLoans = [SELECT Id, Name, loan__Loan_Status__c
+                                                    FROM loan__Loan_Account__c
+                                                    WHERE loan__Loan_Status__c = 'Closed - Obligations met'
+                                                    LIMIT 1];
 
-    /**
-    * @description Validates if a loan is in active good or bad standing status.
-    *               Adds error message if loan status is invalid.
-    * @author Md Sameer | 16-07-2025
-    * @param loanObj Contains the loan object to validate against
-    * @return True if loan status is valid, false otherwise
-    **/
-    public Boolean isLoanStatusValid(loan__Loan_Account__c loanObj) {
-        if (ValidationUtil.getAndResults(new List<Boolean>{
-                loanObj.loan__Loan_Status__c != Folk2FolkConstantValues.ACTIVE_GOOD_STANDING,
-                loanObj.loan__Loan_Status__c != Folk2FolkConstantValues.ACTIVE_BAD_STANDING})) {
-            handlerUtilInst.incrementErrorCount(currentFileInstance);
-            handlerUtilInst.addErrorToList(currentFileInstance, handlerUtilInst.getErrorListSize(currentFileInstance) +
-                Folk2FolkConstantValues.TEXT_IN_COMMMA + 'The loan ' + loanObj.Name +
-                ' is not Active Good - Standing or Active Bad - Standing.' + Folk2FolkConstantValues.NEXT_LINE);
-            return false;
-        }
-        return true;
-    }
-
-    /**
-    * @description Validates that the clearing amount is not more than the interest posted.
-    *               This prevents negative interest postings.
-    * @author Md Sameer | 16-07-2025
-    * @param loanObj Contains the loan object to validate against
-    * @return True if clearing amount is valid, false otherwise
-    **/
-    public Boolean isClearingAmountValid(loan__Loan_Account__c loanObj) {
-        if ((loanObj.loan__Interest_Posted__c - loanNameVsAmountMap.get(loanObj.Name)) < F2FLoanConstants.ZERO) {
-            handlerUtilInst.incrementErrorCount(currentFileInstance);
-            handlerUtilInst.addErrorToList(currentFileInstance, handlerUtilInst.getErrorListSize(currentFileInstance) +
-                Folk2FolkConstantValues.TEXT_IN_COMMMA + 'The clearing amount on the file for the loan ' + loanObj.Name +
-                ' is more than the contract interest posted. This may cause negative interest postings.' + Folk2FolkConstantValues.NEXT_LINE);
-            return false;
-        }
-        return true;
-    }
-
-    /**
-    * @description Validates the difference between contract interest posted and Investment Order postings.
-    *               Ensures the difference is within acceptable tolerance (≤ 1).
-    * @author Md Sameer | 16-07-2025
-    * @param loanObj Contains the loan object to validate against
-    * @param loanNameVsIOPostingMap Map of loan names to their IO posting sums
-    * @return True if posting difference is valid, false otherwise
-    **/
-    public Boolean isPostingDiffValid(loan__Loan_Account__c loanObj, Map<String, Decimal> loanNameVsIOPostingMap) {
-        // Check if loan has any Investment Order interest postings
-        if (!loanNameVsIOPostingMap.containsKey(loanObj.Name)) {
-            handlerUtilInst.incrementErrorCount(currentFileInstance);
-            handlerUtilInst.addErrorToList(currentFileInstance, handlerUtilInst.getErrorListSize(currentFileInstance) +
-                Folk2FolkConstantValues.TEXT_IN_COMMMA + 'The loan ' + loanObj.Name +
-                ' does not have any Investment Orders.' + Folk2FolkConstantValues.NEXT_LINE);
-            return false;
-        }
-
-        // Check if the difference between contract and IO postings is within tolerance £1
-        if (Math.abs(loanObj.loan__Interest_Posted__c - loanNameVsIOPostingMap.get(loanObj.Name)) > F2FLoanConstants.ONE) {
-            handlerUtilInst.incrementErrorCount(currentFileInstance);
-            handlerUtilInst.addErrorToList(currentFileInstance, handlerUtilInst.getErrorListSize(currentFileInstance) +
-                Folk2FolkConstantValues.TEXT_IN_COMMMA + 'The loan ' + loanObj.Name +
-                ' has a difference > £1 with respect to contract interest posted and the sum of interest posted in Investment Orders.'
-                + Folk2FolkConstantValues.NEXT_LINE);
-            return false;
-        }
-        return true;
-    }
-
-    /**
-    * @description Validates if a loan has reversal issues in its payment transactions.
-    *               Checks for inconsistent transaction states that could cause payout issues.
-    * @author Md Sameer | 16-07-2025
-    * @param loanObj Contains the loan object to validate against
-    * @param reversalIssueLoanSet Set of loan names with reversal issues
-    * @return True if no reversal issues, false otherwise
-    **/
-    public Boolean isNoReversalLPTIssue(loan__Loan_Account__c loanObj, Set<String> reversalIssueLoanSet) {
-        if (reversalIssueLoanSet.contains(loanObj.Name)) {
-            handlerUtilInst.incrementErrorCount(currentFileInstance);
-            handlerUtilInst.addErrorToList(currentFileInstance, handlerUtilInst.getErrorListSize(currentFileInstance) +
-                Folk2FolkConstantValues.TEXT_IN_COMMMA + 'The loan ' + loanObj.Name +
-                ' has an incorrect LPT perhaps due to reversal, which may cause a payout issue.' + Folk2FolkConstantValues.NEXT_LINE);
-            return false;
-        }
-        return true;
-    }
-
-    /**
-    * @description Displays appropriate error message based on the file type identifier.
-    *               Uses ApexPages to show error messages to the user.
-    * @author Md Sameer | 16-07-2025
-    * @param identifier The file type identifier (Interest or Fee)
-    **/
-    public void showErrorMessage(String identifier) {
-        // Display error message if validation errors were found
-        if (handlerUtilInst.getErrorListSize(currentFileInstance) > F2FLoanConstants.ZERO) {
-            ApexPages.addMessage(new ApexPages.Message(
-                ApexPages.Severity.ERROR,
-                'There are errors in the {fileType} payment file. '
-                + 'Please check the error file for details.'.replace('{fileType}', identifier)
-            ));
-        }
-    }
-
-    /**
-     * @description Utility class that provides methods to handle errors and error lists
-     *              for F2F payment file handlers. Supports both Interest and Fees handlers.
-     */
-    public class HandlerUtils {
-
-        /**
-        * @description Gets the size of the error list from the handler object.
-        * @author Md Sameer | 16-07-2025
-        * @param handlerObj The handler object (Interest or Fees payment handler)
-        * @return Size of the error list
-        **/
-        public Integer getErrorListSize(Object handlerObj) {
-            if (handlerObj instanceof F2FInterestPaymentFileHandler) {
-                return ((F2FInterestPaymentFileHandler) handlerObj).errorList.size();
-            } else if (handlerObj instanceof F2FFeesPaymentFileHandler) {
-                return ((F2FFeesPaymentFileHandler) handlerObj).errorList.size();
-            }
-            return F2FLoanConstants.ZERO;
-        }
-
-        /**
-        * @description Gets the error count from the handler object.
-        * @author Md Sameer | 16-07-2025
-        * @param handlerObj The handler object (Interest or Fees payment handler)
-        * @return Current error count
-        **/
-        public Integer getErrorCount(Object handlerObj) {
-            if (handlerObj instanceof F2FInterestPaymentFileHandler) {
-                return ((F2FInterestPaymentFileHandler) handlerObj).errorCount;
-            } else if (handlerObj instanceof F2FFeesPaymentFileHandler) {
-                return ((F2FFeesPaymentFileHandler) handlerObj).errorCount;
-            }
-            return F2FLoanConstants.ZERO;
-        }
-
-        /**
-        * @description Increments the error count in the handler object.
-        *               Handles null values by initializing to 1.
-        * @author Md Sameer | 16-07-2025
-        * @param handlerObj The handler object to increment error count for
-        **/
-        public void incrementErrorCount(Object handlerObj) {
-            if (handlerObj instanceof F2FInterestPaymentFileHandler) {
-                F2FInterestPaymentFileHandler handler = (F2FInterestPaymentFileHandler) handlerObj;
-                handler.errorCount = (handler.errorCount == null) ? F2FLoanConstants.ONE : handler.errorCount + F2FLoanConstants.ONE;
-            } else if (handlerObj instanceof F2FFeesPaymentFileHandler) {
-                F2FFeesPaymentFileHandler handler = (F2FFeesPaymentFileHandler) handlerObj;
-                handler.errorCount = (handler.errorCount == null) ? F2FLoanConstants.ONE : handler.errorCount + F2FLoanConstants.ONE;
+        // If no invalid loan exists, modify an existing one
+        if(invalidLoans.size() == 0) {
+            List<loan__Loan_Account__c> availableLoans = [SELECT Id, Name, loan__Loan_Status__c
+                                                        FROM loan__Loan_Account__c
+                                                        LIMIT 1];
+            if(availableLoans.size() > 0) {
+                availableLoans[0].loan__Loan_Status__c = 'Closed - Obligations met';
+                update availableLoans[0];
+                invalidLoans = availableLoans;
+            } else {
+                System.debug('No loans available for testing');
+                return;
             }
         }
 
-        /**
-        * @description Adds an error message to the error list in the handler object.
-        * @author Md Sameer | 16-07-2025
-        * @param handlerObj The handler object to add error message to
-        * @param errorMsg The error message to add
-        **/
-        public void addErrorToList(Object handlerObj, String errorMsg) {
-            if (handlerObj instanceof F2FInterestPaymentFileHandler) {
-                ((F2FInterestPaymentFileHandler) handlerObj).errorList.add(errorMsg);
-            } else if (handlerObj instanceof F2FFeesPaymentFileHandler) {
-                ((F2FFeesPaymentFileHandler) handlerObj).errorList.add(errorMsg);
-            }
-        }
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        Boolean result = helper.isLoanStatusValid(invalidLoans[0]);
+        Test.stopTest();
+
+        System.assertEquals(false, result, 'Should return false for invalid loan status');
+        System.assertEquals(1, interestHandler.errorCount, 'Should have one error for invalid status');
+
+        // Reset the loan status for other tests
+        invalidLoans[0].loan__Loan_Status__c = 'Active - Good Standing';
+        update invalidLoans[0];
+    }
+
+    @isTest
+    static void testIsClearingAmountValidWithValidAmount() {
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c WHERE loan__Interest_Posted__c > 0 LIMIT 1];
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        loanAmountMap.put(loans[0].Name, 50.0); // Amount less than interest posted
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        Boolean result = helper.isClearingAmountValid(loans[0]);
+        Test.stopTest();
+
+        System.assertEquals(true, result, 'Should return true for valid clearing amount');
+        System.assertEquals(0, interestHandler.errorCount, 'Should not have errors for valid amount');
+    }
+
+    @isTest
+    static void testIsClearingAmountValidWithExcessiveAmount() {
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c LIMIT 1];
+        loans[0].loan__Interest_Posted__c = 100; // Set low amount for this test
+        update loans[0];
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        loanAmountMap.put(loans[0].Name, 150.0); // Amount exceeds interest posted
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        Boolean result = helper.isClearingAmountValid(loans[0]);
+        Test.stopTest();
+
+        System.assertEquals(false, result, 'Should return false for excessive clearing amount');
+        System.assertEquals(1, interestHandler.errorCount, 'Should have one error for excessive amount');
+
+        // Reset loan for other tests
+        loans[0].loan__Interest_Posted__c = 1000;
+        update loans[0];
+    }
+
+    @isTest
+    static void testIsPostingDiffValidWithValidDifference() {
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = false AND loan__Interest_Posted__c = 1000 LIMIT 1];
+
+        Map<String, Decimal> loanNameVsIOPostingMap = new Map<String, Decimal>();
+        loanNameVsIOPostingMap.put(loans[0].Name, 1000.0); // Exact match
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        Boolean result = helper.isPostingDiffValid(loans[0], loanNameVsIOPostingMap);
+        Test.stopTest();
+
+        System.assertEquals(true, result, 'Should return true for valid posting difference');
+        System.assertEquals(0, interestHandler.errorCount, 'Should not have errors for valid difference');
+    }
+
+    @isTest
+    static void testIsPostingDiffValidWithExcessiveDifference() {
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name, loan__Interest_Posted__c FROM loan__Loan_Account__c LIMIT 1];
+        loans[0].loan__Interest_Posted__c = 100; // Set amount for this test
+        update loans[0];
+
+        Map<String, Decimal> loanNameVsIOPostingMap = new Map<String, Decimal>();
+        loanNameVsIOPostingMap.put(loans[0].Name, 95.0); // 5 difference, should fail (>1)
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        Boolean result = helper.isPostingDiffValid(loans[0], loanNameVsIOPostingMap);
+        Test.stopTest();
+
+        System.assertEquals(false, result, 'Should return false for excessive posting difference');
+        System.assertEquals(1, interestHandler.errorCount, 'Should have one error for excessive difference');
+
+        // Reset loan for other tests
+        loans[0].loan__Interest_Posted__c = 1000;
+        update loans[0];
+    }
+
+    @isTest
+    static void testIsPostingDiffValidWithNoInvestmentOrders() {
+        // Create a loan without Investment Orders using unique name
+        List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Helper Test Borrower' LIMIT 1];
+        loan__Loan_Account__c loanWithoutIO = new loan__Loan_Account__c();
+        loanWithoutIO.loan__Account__c = borrowerAccounts[0].Id;
+        loanWithoutIO.loan__Interest_Posted__c = 500;
+        loanWithoutIO.loan__Invalid_Data__c = false;
+        loanWithoutIO.loan__Loan_Status__c = 'Active - Good Standing';
+        loanWithoutIO.loan__Principal_Remaining__c = 10000;
+        loanWithoutIO.loan__Loan_Amount__c = 10000;
+        // Set other required fields
+        loanWithoutIO.loan__Loan_Purpose__c = 'Personal';
+        loanWithoutIO.loan__Loan_Product_Name__c = 'Standard Loan';
+        insert loanWithoutIO;
+
+        Map<String, Decimal> loanNameVsIOPostingMap = new Map<String, Decimal>();
+        // No entry for this loan in the map
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        Boolean result = helper.isPostingDiffValid(loanWithoutIO, loanNameVsIOPostingMap);
+        Test.stopTest();
+
+        System.assertEquals(false, result, 'Should return false for loan without Investment Orders');
+        System.assertEquals(1, interestHandler.errorCount, 'Should have one error for missing Investment Orders');
+    }
+
+    @isTest
+    static void testIsNoReversalLPTIssueWithNoIssues() {
+        // Create a loan without reversal issues using unique name
+        List<Account> borrowerAccounts = [SELECT Id FROM Account WHERE Name = 'Helper Test Borrower' LIMIT 1];
+        loan__Loan_Account__c cleanLoan = new loan__Loan_Account__c();
+        cleanLoan.loan__Account__c = borrowerAccounts[0].Id;
+        cleanLoan.loan__Invalid_Data__c = false;
+        cleanLoan.loan__Loan_Status__c = 'Active - Good Standing';
+        cleanLoan.loan__Principal_Remaining__c = 10000;
+        cleanLoan.loan__Loan_Amount__c = 10000;
+        // Set other required fields
+        cleanLoan.loan__Loan_Purpose__c = 'Personal';
+        cleanLoan.loan__Loan_Product_Name__c = 'Standard Loan';
+        insert cleanLoan;
+
+        Set<String> reversalIssueLoanSet = new Set<String>();
+        // No reversal issues for this loan
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        Boolean result = helper.isNoReversalLPTIssue(cleanLoan, reversalIssueLoanSet);
+        Test.stopTest();
+
+        System.assertEquals(true, result, 'Should return true for loan without reversal issues');
+        System.assertEquals(0, interestHandler.errorCount, 'Should not have errors for clean loan');
+    }
+
+    @isTest
+    static void testIsNoReversalLPTIssueWithIssues() {
+        List<loan__Loan_Account__c> loans = [SELECT Id, Name FROM loan__Loan_Account__c WHERE loan__Invalid_Data__c = false LIMIT 1];
+
+        Set<String> reversalIssueLoanSet = new Set<String>();
+        reversalIssueLoanSet.add(loans[0].Name); // This loan has reversal issues
+
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        Boolean result = helper.isNoReversalLPTIssue(loans[0], reversalIssueLoanSet);
+        Test.stopTest();
+
+        System.assertEquals(false, result, 'Should return false for loan with reversal issues');
+        System.assertEquals(1, interestHandler.errorCount, 'Should have one error for reversal issue');
+    }
+
+    @isTest
+    static void testShowErrorMessageInterest() {
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        interestHandler.errorCount = 1;
+        interestHandler.errorList.add('Test error');
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        PageReference pageRef = Page.F2FUploadPaymentFilePage;
+        Test.setCurrentPage(pageRef);
+        helper.showErrorMessage('interest');
+        Test.stopTest();
+
+        // Should add ApexPages message for errors
+        List<ApexPages.Message> messages = ApexPages.getMessages();
+        System.assert(messages.size() > 0, 'Should have ApexPages messages');
+    }
+
+    @isTest
+    static void testShowErrorMessageFees() {
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        F2FFeesPaymentFileHandler feesHandler = new F2FFeesPaymentFileHandler();
+        feesHandler.errorCount = 1;
+        feesHandler.errorList.add('Test error');
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(feesHandler, loanAmountMap);
+
+        Test.startTest();
+        PageReference pageRef = Page.F2FUploadPaymentFilePage;
+        Test.setCurrentPage(pageRef);
+        helper.showErrorMessage('fees');
+        Test.stopTest();
+
+        // Should add ApexPages message for errors
+        List<ApexPages.Message> messages = ApexPages.getMessages();
+        System.assert(messages.size() > 0, 'Should have ApexPages messages');
+    }
+
+    @isTest
+    static void testHandlerUtilsWithInterestHandler() {
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        Test.startTest();
+        // Test getErrorListSize
+        Integer size = helper.handlerUtilInst.getErrorListSize(interestHandler);
+        System.assertEquals(0, size, 'Should return 0 for empty error list');
+
+        // Test getErrorCount
+        Integer count = helper.handlerUtilInst.getErrorCount(interestHandler);
+        System.assertEquals(0, count, 'Should return 0 for zero error count');
+
+        // Test incrementErrorCount
+        helper.handlerUtilInst.incrementErrorCount(interestHandler);
+        System.assertEquals(1, interestHandler.errorCount, 'Should increment error count to 1');
+
+        // Test addErrorToList
+        helper.handlerUtilInst.addErrorToList(interestHandler, 'Test error');
+        System.assertEquals(1, interestHandler.errorList.size(), 'Should add error to list');
+        Test.stopTest();
+    }
+
+    @isTest
+    static void testHandlerUtilsWithFeesHandler() {
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        F2FFeesPaymentFileHandler feesHandler = new F2FFeesPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(feesHandler, loanAmountMap);
+
+        Test.startTest();
+        // Test getErrorListSize
+        Integer size = helper.handlerUtilInst.getErrorListSize(feesHandler);
+        System.assertEquals(0, size, 'Should return 0 for empty error list');
+
+        // Test getErrorCount
+        Integer count = helper.handlerUtilInst.getErrorCount(feesHandler);
+        System.assertEquals(0, count, 'Should return 0 for zero error count');
+
+        // Test incrementErrorCount
+        helper.handlerUtilInst.incrementErrorCount(feesHandler);
+        System.assertEquals(1, feesHandler.errorCount, 'Should increment error count to 1');
+
+        // Test addErrorToList
+        helper.handlerUtilInst.addErrorToList(feesHandler, 'Test error');
+        System.assertEquals(1, feesHandler.errorList.size(), 'Should add error to list');
+        Test.stopTest();
+    }
+
+    @isTest
+    static void testHandlerUtilsWithInvalidHandler() {
+        Map<String, Decimal> loanAmountMap = new Map<String, Decimal>();
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, loanAmountMap);
+
+        String invalidHandler = 'Invalid Handler';
+
+        Test.startTest();
+        // Test methods with invalid handler
+        Integer size = helper.handlerUtilInst.getErrorListSize(invalidHandler);
+        System.assertEquals(0, size, 'Should return 0 for invalid handler');
+
+        Integer count = helper.handlerUtilInst.getErrorCount(invalidHandler);
+        System.assertEquals(0, count, 'Should return 0 for invalid handler');
+
+        // These methods should handle invalid handler gracefully
+        helper.handlerUtilInst.incrementErrorCount(invalidHandler);
+        helper.handlerUtilInst.addErrorToList(invalidHandler, 'Test error');
+        Test.stopTest();
+    }
+
+    @isTest
+    static void testInterestFileValidationEmptyMap() {
+        Map<String, Decimal> emptyLoanAmountMap = new Map<String, Decimal>();
+
+        F2FInterestPaymentFileHandler interestHandler = new F2FInterestPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(interestHandler, emptyLoanAmountMap);
+
+        Test.startTest();
+        helper.interestFileValidation();
+        Test.stopTest();
+
+        // Should handle empty map gracefully
+        System.assertEquals(0, interestHandler.errorCount, 'Should not have errors for empty map');
+    }
+
+    @isTest
+    static void testFeesFileValidationEmptyMap() {
+        Map<String, Decimal> emptyLoanAmountMap = new Map<String, Decimal>();
+
+        F2FFeesPaymentFileHandler feesHandler = new F2FFeesPaymentFileHandler();
+        F2FPaymentFileHelper helper = new F2FPaymentFileHelper(feesHandler, emptyLoanAmountMap);
+
+        Test.startTest();
+        helper.feesFileValidation();
+        Test.stopTest();
+
+        // Should handle empty map gracefully
+        System.assertEquals(0, feesHandler.errorCount, 'Should not have errors for empty map');
+    }
+
+    //Utility method for unique user creation
+    private static User createUniqueTestUser(String testMethodName) {
+        List<Profile> systemAdminProfileList = [SELECT Id FROM Profile WHERE Name = 'System Administrator'];
+
+        String uniqueEmail = 'testUser_' + testMethodName + '_' + System.now().getTime() + '@test.com';
+        User userToInsertObj = StandardFeaturesTestHelper.getUser('testUser', uniqueEmail, systemAdminProfileList[0].Id);
+        Database.insert(userToInsertObj);
+        return userToInsertObj;
     }
 }
