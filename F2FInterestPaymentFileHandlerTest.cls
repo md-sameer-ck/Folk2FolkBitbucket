@@ -714,6 +714,14 @@ private class F2FInterestPaymentFileHandlerTest {
         }
     }
 
+    @isTest
+    static void testClearLoanPaymentTransactions_EmptyMap() {
+        F2FInterestPaymentFileHandler handler = new F2FInterestPaymentFileHandler();
+        Map<String, Decimal> emptyMap = new Map<String, Decimal>();
+        handler.clearLoanPaymentTransactions(emptyMap);
+        System.assert(true, 'Method should complete without error for empty input map.');
+    }
+
     //Utility method for unique user creation
     private static User createUniqueTestUser(String testMethodName) {
         List<Profile> systemAdminProfileList = [SELECT Id FROM Profile WHERE Name = 'System Administrator'];
